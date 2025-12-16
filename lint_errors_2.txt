@@ -1,0 +1,38 @@
+
+> sgbau@0.1.0 lint
+> eslint
+
+
+D:\Working Projects\New folder\sgbau\app\profile\page.tsx
+  64:18  warning  'error' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  85:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Working Projects\New folder\sgbau\components\Navbar.tsx
+  54:37  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Working Projects\New folder\sgbau\components\ThemeToggle.tsx
+  6:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Working Projects\New folder\sgbau\context\AuthContext.tsx
+  50:8  warning  React Hook useEffect has a missing dependency: 'ADMIN_EMAILS'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Working Projects\New folder\sgbau\hooks\useProgress.ts
+  17:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\Working Projects\New folder\sgbau\hooks\useProgress.ts:17:13
+  15 |         if (!user) {
+  16 |             // Reset state if user logs out
+> 17 |             setProgressMap({});
+     |             ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  18 |             setLoading(false);
+  19 |             return;
+  20 |         }  react-hooks/set-state-in-effect
+
+Γ£û 6 problems (1 error, 5 warnings)
+

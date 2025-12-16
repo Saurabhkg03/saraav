@@ -1,0 +1,102 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- HELPER FUNCTIONS ---
+
+    // Check if user is logged in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Check if the user is accessing their own data
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Check if user is Admin
+    // OPTIMIZED HYRBID: Checks token first (0 cost). If missing, falls back to DB (1 read).
+    function isAdmin() {
+      return (request.auth.token.admin == true) || 
+      (isSignedIn() && (
+        (exists(/databases/$(database)/documents/settings/roles) &&
+         request.auth.token.email in get(/databases/$(database)/documents/settings/roles).data.adminEmails) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      ));
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. USERS COLLECTION
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Allow create/delete if owner or admin (Basic access)
+      allow create, delete: if isOwner(userId) || isAdmin();
+
+      // Allow update ONLY if sensitive fields are not touched (unless Admin)
+      allow update: if isAdmin() || (
+        isOwner(userId) && 
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['purchasedCourseIds', 'role', 'purchases'])
+      );
+      
+      match /{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // 2. SUBJECTS & CONTENT
+    match /subjects/{subjectId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /{document=**} {
+        allow read: if true; 
+        allow write: if isAdmin();
+      }
+    }
+
+    // 2a. SUBJECTS METADATA (Lightweight)
+    match /subjects_metadata/{subjectId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // *** NEW RULE ADDED HERE ***
+    // Allows admins to delete from the 'subject_contents' collection
+    match /subject_contents/{contentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 3. REPORTS & FEEDBACK
+    match /reports/{reportId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
+    }
+    
+    match /feedback/{feedbackId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 4. SETTINGS
+    match /settings/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 5. ORDERS
+    match /orders/{orderId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 6. DEFAULT DENY
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,32 @@
+
+> sgbau@0.1.0 build
+> next build
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of D:\Working Projects\New folder\pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * D:\Working Projects\New folder\sgbau\package-lock.json
+
+   Γû▓ Next.js 16.0.5 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ Γ£ô Compiled successfully in 10.0s
+   Running TypeScript ...
+Failed to compile.
+
+./lib/store.ts:24:17
+Type error: Object literal may only specify known properties, and 'name' does not exist in type 'UserProfile'.
+
+  22 |             subjects: [],
+  23 |             userProfile: {
+> 24 |                 name: 'Student',
+     |                 ^
+  25 |                 email: 'student@example.com',
+  26 |                 stats: {
+  27 |                     totalSolved: 0,
+Next.js build worker exited with code: 1 and signal: null
