@@ -18,7 +18,7 @@ interface SolutionModalProps {
 export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) {
     const [isFullScreen, setIsFullScreen] = useState(false);
     const contentRef = useRef<HTMLDivElement>(null);
-    const [touchStart, setTouchStart] = useState<{ x: number; y: number; scrollTop: number } | null>(null);
+    const touchStart = useRef<{ x: number; y: number; scrollTop: number } | null>(null);
 
     // Use ref to keep the latest onClose without triggering re-renders of the effect
     const onCloseRef = useRef(onClose);
@@ -37,18 +37,73 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
         };
     }, [isOpen]);
 
+    // Manual Touch Event Listeners (Non-Passive)
+    // We attach these manually to support { passive: false }, which allows us to preventDefault
+    // and stop the browser's native stuck behavior, while avoiding the "passive listener" console error.
+    useEffect(() => {
+        const el = contentRef.current;
+        if (!el || !isFullScreen) return;
+
+        const handleTouchStart = (e: TouchEvent) => {
+            // We only care about the first touch
+            const touch = e.touches[0];
+            touchStart.current = {
+                x: touch.clientX,
+                y: touch.clientY,
+                scrollTop: el.scrollTop
+            };
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (!touchStart.current) return;
+
+            // Critical: preventDefault allows us to override the browser's scroll behavior
+            if (e.cancelable) e.preventDefault();
+
+            const touch = e.touches[0];
+
+            // Inverted Logic based on user feedback:
+            // Previous: deltaX = start - current.
+            // New: We simply flip the sign or operand order.
+            // Let's calculate proper delta: CurrentX - StartX
+            // If I move finger Left (Visual Up): Current < Start. diff is negative.
+            // If I want to scroll DOWN (increment scrollTop), I need a positive addition?
+            // User said it was inverted.
+            // Let's try: scrollTop = initial - (Current - Start)
+            // = initial - Current + Start
+            // = initial + (Start - Current) -> This was the OLD logic.
+            // So we need: scrollTop = initial - (Start - Current)
+            // = initial + (Current - Start).
+
+            const diffX = touch.clientX - touchStart.current.x;
+            el.scrollTop = touchStart.current.scrollTop - diffX;
+        };
+
+        const handleTouchEnd = () => {
+            touchStart.current = null;
+        };
+
+        // Attach with { passive: false }
+        el.addEventListener('touchstart', handleTouchStart, { passive: false });
+        el.addEventListener('touchmove', handleTouchMove, { passive: false });
+        el.addEventListener('touchend', handleTouchEnd);
+
+        return () => {
+            el.removeEventListener('touchstart', handleTouchStart);
+            el.removeEventListener('touchmove', handleTouchMove);
+            el.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [isFullScreen]);
+
     // Handle Back Button behavior with Hash
     useEffect(() => {
         const isMobile = window.matchMedia('(max-width: 767px)').matches;
         if (isOpen && isMobile) {
-            // Push a hash state. This is more robust on mobile browsers.
-            // Check if we already have the hash to avoid double-pushing in Strict Mode
             if (window.location.hash !== '#solution') {
                 window.history.pushState({ modalOpen: true }, "", "#solution");
             }
 
             const handlePopState = () => {
-                // User pressed Back (hash removed) -> Call the latest onClose
                 onCloseRef.current();
             };
 
@@ -56,26 +111,17 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
 
             return () => {
                 window.removeEventListener("popstate", handlePopState);
-
-                // Cleanup: If the component unmounts but the hash is still there (e.g. parent closed it programmatically),
-                // we should try to remove it to keep URL clean, but be careful not to pop if user already popped.
-                // For simplicity/safety, we rely on the user's manual interactions or the manual close handler.
             };
         }
     }, [isOpen]);
 
     const handleManualClose = () => {
-        // When manually closing, if we have our hash, go back to remove it.
-        // If we don't have our hash (rare edge case), just call onClose.
         if (window.location.hash === '#solution') {
             window.history.back();
         } else {
-            onCloseRef.current(); // Fallback if hash is missing
+            onCloseRef.current();
         }
     };
-
-    // Check if we are in landscape mode based on full screen state
-    // When isFullScreen is true, we rotate the view 90 degrees to simulate landscape on portrait phones
 
     if (!isOpen) return null;
 
@@ -114,39 +160,14 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
             <div
                 ref={contentRef}
                 className={cn(
-                    "flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full max-w-full p-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 break-words h-full",
-                    isFullScreen ? "p-8" : "p-4"
+                    "flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full max-w-full p-4 break-words h-full",
+                    isFullScreen
+                        ? "p-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+                        : "p-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700"
                 )}
                 style={{
                     WebkitOverflowScrolling: 'touch',
                     touchAction: isFullScreen ? 'none' : 'auto'
-                }}
-                onTouchStart={(e) => {
-                    if (!isFullScreen) return;
-                    const touch = e.touches[0];
-                    setTouchStart({
-                        x: touch.clientX,
-                        y: touch.clientY,
-                        scrollTop: e.currentTarget.scrollTop
-                    });
-                }}
-                onTouchMove={(e) => {
-                    if (!isFullScreen || !touchStart) return;
-                    e.preventDefault(); // Prevent native handling to stop browser confusion
-                    const touch = e.touches[0];
-                    const deltaX = touchStart.x - touch.clientX;
-
-                    // Landscape Mode Logic:
-                    // User holds phone sideways.
-                    // Visual "Up/Down" swipe corresponds to Physical "Left/Right" (along X axis).
-                    // We mapped deltaX to scrollTop.
-                    // Swipe Left (physically) -> DeltaX is positive.
-                    // Swipe Left means moving finger towards top of landscape view.
-                    // Content should scroll DOWN (scrollTop increases).
-
-                    if (contentRef.current) {
-                        contentRef.current.scrollTop = touchStart.scrollTop + deltaX;
-                    }
                 }}
             >
                 <ErrorBoundary label="solution modal content">
