@@ -76,7 +76,7 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
             // = initial + (Current - Start).
 
             const diffX = touch.clientX - touchStart.current.x;
-            el.scrollTop = touchStart.current.scrollTop - diffX;
+            el.scrollTop = touchStart.current.scrollTop + diffX;
         };
 
         const handleTouchEnd = () => {
