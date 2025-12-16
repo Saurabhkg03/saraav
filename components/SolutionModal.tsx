@@ -17,6 +17,8 @@ interface SolutionModalProps {
 
 export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) {
     const [isFullScreen, setIsFullScreen] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [touchStart, setTouchStart] = useState<{ x: number; y: number; scrollTop: number } | null>(null);
 
     // Use ref to keep the latest onClose without triggering re-renders of the effect
     const onCloseRef = useRef(onClose);
@@ -82,7 +84,7 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
             "fixed z-50 flex flex-col bg-white dark:bg-zinc-950 md:hidden transition-all duration-300 ease-in-out",
             !isFullScreen && "inset-0",
             isFullScreen
-                ? "origin-center rotate-90 w-[100dvh] h-[100dvw] max-h-[100dvw] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-none overscroll-none"
+                ? "origin-center rotate-90 w-[100dvh] h-[100dvw] max-h-[100dvw] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-none"
                 : ""
         )}>
             {/* Header */}
@@ -109,10 +111,44 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
             </div>
 
             {/* Content */}
-            <div className={cn(
-                "flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full max-w-full p-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 break-words",
-                isFullScreen ? "p-8" : "p-4"
-            )}>
+            <div
+                ref={contentRef}
+                className={cn(
+                    "flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full max-w-full p-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 break-words h-full",
+                    isFullScreen ? "p-8" : "p-4"
+                )}
+                style={{
+                    WebkitOverflowScrolling: 'touch',
+                    touchAction: isFullScreen ? 'none' : 'auto'
+                }}
+                onTouchStart={(e) => {
+                    if (!isFullScreen) return;
+                    const touch = e.touches[0];
+                    setTouchStart({
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        scrollTop: e.currentTarget.scrollTop
+                    });
+                }}
+                onTouchMove={(e) => {
+                    if (!isFullScreen || !touchStart) return;
+                    e.preventDefault(); // Prevent native handling to stop browser confusion
+                    const touch = e.touches[0];
+                    const deltaX = touchStart.x - touch.clientX;
+
+                    // Landscape Mode Logic:
+                    // User holds phone sideways.
+                    // Visual "Up/Down" swipe corresponds to Physical "Left/Right" (along X axis).
+                    // We mapped deltaX to scrollTop.
+                    // Swipe Left (physically) -> DeltaX is positive.
+                    // Swipe Left means moving finger towards top of landscape view.
+                    // Content should scroll DOWN (scrollTop increases).
+
+                    if (contentRef.current) {
+                        contentRef.current.scrollTop = touchStart.scrollTop + deltaX;
+                    }
+                }}
+            >
                 <ErrorBoundary label="solution modal content">
                     <MarkdownRenderer content={content} />
                 </ErrorBoundary>

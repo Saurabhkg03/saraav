@@ -316,7 +316,7 @@ export default function SubjectPage() {
                     <button
                         onClick={() => setActiveTab('questions')}
                         className={cn(
-                            "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+                            "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all whitespace-nowrap",
                             activeTab === 'questions'
                                 ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
                                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
@@ -328,7 +328,7 @@ export default function SubjectPage() {
                     <button
                         onClick={() => setActiveTab('favourites')}
                         className={cn(
-                            "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+                            "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all whitespace-nowrap",
                             activeTab === 'favourites'
                                 ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
                                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
@@ -340,7 +340,7 @@ export default function SubjectPage() {
                     <button
                         onClick={() => setActiveTab('syllabus')}
                         className={cn(
-                            "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+                            "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all whitespace-nowrap",
                             activeTab === 'syllabus'
                                 ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
                                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"

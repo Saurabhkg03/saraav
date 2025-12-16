@@ -22,12 +22,11 @@ body {
     overflow-x: hidden;
     max-width: 100vw;
     position: relative;
-    word-break: break-word; /* Global fallback for text wrapping */
 }
 
 /* Ensure HTML also doesn't scroll */
 html {
-    overflow-x: hidden; 
+    overflow-x: hidden;
     max-width: 100vw;
 }
 
