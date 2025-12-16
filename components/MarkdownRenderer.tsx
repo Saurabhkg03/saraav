@@ -52,7 +52,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
     const formattedContent = formatMath(content);
 
     return (
-        <div className={cn("prose prose-zinc w-full max-w-full min-w-0 dark:prose-invert break-words overflow-hidden", className)} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+        <div className={cn("prose prose-zinc w-full max-w-full min-w-0 dark:prose-invert break-words overflow-hidden", className)} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
             <ReactMarkdown
                 remarkPlugins={[remarkMath, remarkGfm]}
                 rehypePlugins={[rehypeKatex]}
@@ -66,8 +66,8 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
                     li: ({ children }) => <li className="pl-1 text-zinc-700 dark:text-zinc-300">{children}</li>,
                     // Fix table overflow by wrapping in a block container with explicit overflow handling
                     table: ({ children }) => (
-                        <div className="my-6 block w-full overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50">
-                            <table className="w-full text-left text-sm">
+                        <div className="my-6 block w-full overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50" style={{ maxWidth: '100%' }}>
+                            <table className="min-w-full text-left text-sm">
                                 {children}
                             </table>
                         </div>
