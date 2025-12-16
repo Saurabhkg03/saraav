@@ -579,7 +579,8 @@ export function QuestionItem({
                                                 width={0}
                                                 height={0}
                                                 sizes="(max-width: 768px) 100vw, 600px"
-                                                className="max-h-96 w-full object-contain mx-auto h-auto"
+                                                className="max-h-96 w-full object-contain mx-auto h-auto max-w-full"
+                                                unoptimized
                                             />
                                         </div>
                                     )}

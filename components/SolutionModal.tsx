@@ -110,7 +110,7 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
 
             {/* Content */}
             <div className={cn(
-                "flex-1 min-w-0 overflow-auto w-full max-w-full p-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700",
+                "flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full max-w-full p-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 break-words",
                 isFullScreen ? "p-8" : "p-4"
             )}>
                 <ErrorBoundary label="solution modal content">
