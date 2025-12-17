@@ -309,7 +309,7 @@ export function QuestionItem({
                                 {question.questionImageUrl && (
                                     <div className="mt-4">
                                         <p className="mb-1 text-xs font-medium text-zinc-500">Image Preview:</p>
-                                        <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950">
+                                        <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <Image
                                                 src={question.questionImageUrl}
@@ -339,7 +339,7 @@ export function QuestionItem({
                             </div>
                         ))}
                         {question.questionImageUrl && (
-                            <div className="mt-4 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900">
+                            <div className="mt-4 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white">
                                 {/* Fixed image display - ensuring object-contain */}
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <Image
@@ -526,7 +526,7 @@ export function QuestionItem({
                                                 </div>
 
                                                 {question.solutionImageUrl && (
-                                                    <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-950">
+                                                    <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700">
                                                         <Image
                                                             src={question.solutionImageUrl}
                                                             alt="Solution Preview"
@@ -545,7 +545,7 @@ export function QuestionItem({
                                     <div className="space-y-4">
                                         <label className="mb-2 block text-xs font-semibold uppercase text-zinc-500">Live Preview</label>
                                         {question.solutionImageUrl && (
-                                            <div className="mb-4 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950">
+                                            <div className="mb-4 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <Image
                                                     src={question.solutionImageUrl}
@@ -571,7 +571,7 @@ export function QuestionItem({
                             showSolution && solutionText && (
                                 <div className="p-6">
                                     {question.solutionImageUrl && (
-                                        <div className="mb-6 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900">
+                                        <div className="mb-6 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <Image
                                                 src={question.solutionImageUrl}
@@ -590,6 +590,11 @@ export function QuestionItem({
                                                 content={solutionText || ''}
                                             />
                                         </ErrorBoundary>
+                                        <div className="mt-6 flex items-center justify-center border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                                            <p className="text-xs italic text-zinc-600 dark:text-zinc-300">
+                                                AI-generated solution • Diagram is just for reference • Please verify key details & report issues
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             )

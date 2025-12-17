@@ -40,7 +40,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
 
         // 4. Images (Next Image behavior is hard to replicate 1:1 in raw HTML string without hydration, but we can do standard responsive img)
         renderer.image = ({ href, title, text }: any) => {
-            return `<img src="${href}" alt="${text}" title="${title || ''}" class="rounded-lg border border-zinc-200 dark:border-zinc-700 w-full h-auto my-4" loading="lazy" />`;
+            return `<img src="${href}" alt="${text}" title="${title || ''}" class="rounded-lg border border-zinc-200 w-full h-auto my-4 bg-white p-2" loading="lazy" />`;
         };
 
         // Config marked
@@ -146,7 +146,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
 
                         // Create Scroll Wrapper for Diagram
                         const scrollWrapper = document.createElement('div');
-                        scrollWrapper.className = "my-6 w-full overflow-x-auto bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 p-4 text-center";
+                        scrollWrapper.className = "my-6 w-full overflow-x-auto bg-white rounded-lg shadow-sm border border-zinc-200 p-4 text-center";
                         scrollWrapper.innerHTML = svg;
 
                         // Fix Scaling: Prevent SVG from shrinking (user said "too small condensed")

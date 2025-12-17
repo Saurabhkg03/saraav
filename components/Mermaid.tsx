@@ -20,7 +20,7 @@ export function Mermaid({ chart }: MermaidProps) {
         if (isMounted) {
             mermaid.initialize({
                 startOnLoad: false,
-                theme: theme === 'dark' ? 'dark' : 'default',
+                theme: 'default', // Always use default theme for white background
                 securityLevel: 'loose',
                 fontFamily: 'ui-sans-serif, system-ui, sans-serif',
                 flowchart: {
@@ -29,13 +29,16 @@ export function Mermaid({ chart }: MermaidProps) {
                 }
             });
         }
-    }, [theme, isMounted]);
+    }, [isMounted]); // Removed theme dependency since we always use default
 
     useEffect(() => {
         if (!isMounted) return;
 
         const renderChart = async () => {
             try {
+                // Generate unique ID for each render to avoid conflicts
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const _id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
                 const { svg } = await mermaid.render(`mermaid-${Math.random().toString(36).substr(2, 9)}`, chart);
                 setSvg(svg);
             } catch (error) {
@@ -48,14 +51,14 @@ export function Mermaid({ chart }: MermaidProps) {
         };
 
         renderChart();
-    }, [chart, theme, isMounted]);
+    }, [chart, isMounted]); // Removed theme dependency
 
-    if (!isMounted) return <div className="animate-pulse h-32 bg-zinc-100 dark:bg-zinc-800 rounded-lg"></div>;
+    if (!isMounted) return <div className="animate-pulse h-32 bg-zinc-100 rounded-lg"></div>;
 
     return (
         <div
             ref={ref}
-            className="my-4 block w-full max-w-full overflow-x-auto rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900/50"
+            className="my-4 block w-full max-w-full overflow-x-auto rounded-lg bg-white p-4 items-center justify-center flex" // Added flex center for better presentation
             dangerouslySetInnerHTML={{ __html: svg }}
         />
     );

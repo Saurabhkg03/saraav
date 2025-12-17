@@ -177,6 +177,11 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
             >
                 <ErrorBoundary label="solution modal content">
                     <MarkdownRenderer content={content} />
+                    <div className="mt-8 flex items-center justify-center border-t border-zinc-100 pt-6 pb-2 dark:border-zinc-800">
+                        <p className="text-xs italic text-zinc-600 dark:text-zinc-300">
+                            AI-generated solution • Diagram is just for reference • Please verify key details & report issues
+                        </p>
+                    </div>
                 </ErrorBoundary>
             </div>
         </div>
