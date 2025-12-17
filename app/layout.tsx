@@ -17,7 +17,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL('https://saraav.in'),
   title: {
-    default: "Saraav | SGBAU Exam Prep & Solutions",
+    default: "Saraav | सराव | SGBAU Exam Prep & Solutions",
     template: "%s | Saraav"
   },
   description: "Ace your SGBAU engineering exams with Saraav. Access previous year questions, expert video solutions, and syllabus tracking.",

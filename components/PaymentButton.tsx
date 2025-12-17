@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useSettings } from '@/hooks/useSettings';
+import { cn } from '@/lib/utils';
 
 interface PaymentButtonProps {
     courseId?: string;
@@ -162,7 +163,7 @@ export function PaymentButton({ courseId, courseIds, amount, courseName, classNa
 
     if (settingsLoading) {
         return (
-            <button disabled className={className || "flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-8 py-4 text-base font-semibold text-zinc-400"}>
+            <button disabled className={cn("flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-8 py-4 text-base font-semibold text-zinc-400", className)}>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Loading...
             </button>
@@ -173,19 +174,27 @@ export function PaymentButton({ courseId, courseIds, amount, courseName, classNa
         <button
             onClick={handlePayment}
             disabled={loading}
-            className={className || "flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-lg transition-all hover:bg-indigo-500 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"}
-        >
-            {loading ? (
-                <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Processing...
-                </>
-            ) : (
-                <>
-                    {settings.isPaymentEnabled ? <Lock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
-                    {settings.isPaymentEnabled ? `Enroll Now - ₹${amount}` : 'Enroll for Free'}
-                </>
+            className={cn(
+                "group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-blue-600 px-8 py-4 text-base font-semibold text-white shadow-lg transition-all hover:bg-blue-500 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed",
+                className
             )}
+        >
+            {/* Shimmer Effect */}
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+            <div className="relative flex items-center gap-2">
+                {loading ? (
+                    <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Processing...
+                    </>
+                ) : (
+                    <>
+                        {settings.isPaymentEnabled ? <Lock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
+                        {settings.isPaymentEnabled ? `Enroll Now - ₹${amount}` : 'Enroll for Free'}
+                    </>
+                )}
+            </div>
         </button>
     );
 }

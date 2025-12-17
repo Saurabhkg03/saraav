@@ -13,6 +13,7 @@
     "@types/katex": "^0.16.7",
     "@types/marked": "^5.0.2",
     "clsx": "^2.1.1",
+    "driver.js": "^1.4.0",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "katex": "^0.16.27",

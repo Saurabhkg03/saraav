@@ -69,8 +69,8 @@ export default function SemesterBundlePage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-black">
-            <div className="mx-auto max-w-7xl">
+        <div className="min-h-screen bg-zinc-50 pb-32 pt-8 dark:bg-black lg:pb-8"> {/* Added pb-32 for mobile footer space */}
+            <div className="mx-auto max-w-7xl px-4">
                 <Link
                     href="/marketplace"
                     className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
@@ -89,6 +89,23 @@ export default function SemesterBundlePage() {
                             <p className="text-lg text-zinc-500 dark:text-zinc-400">
                                 {branch}
                             </p>
+                        </div>
+
+                        {/* Mobile Bundle Summary (Top) */}
+                        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+                            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                                Bundle Summary
+                            </h2>
+                            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p className="text-zinc-500 dark:text-zinc-400">Validity</p>
+                                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{settings?.courseDurationMonths || 5} Months</p>
+                                </div>
+                                <div>
+                                    <p className="text-zinc-500 dark:text-zinc-400">Total Subjects</p>
+                                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{bundleSubjects.length}</p>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Breadcrumb for Elective Folder */}
@@ -160,8 +177,8 @@ export default function SemesterBundlePage() {
                         </div>
                     </div>
 
-                    {/* Right: Summary & Checkout */}
-                    <div className="lg:col-span-1">
+                    {/* Right: Summary & Checkout (Desktop Only) */}
+                    <div className="hidden lg:col-span-1 lg:block">
                         <div className="sticky top-24 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                             <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
                                 Bundle Summary
@@ -211,6 +228,37 @@ export default function SemesterBundlePage() {
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Sticky Footer */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Total Price</p>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-sm text-zinc-400 line-through">₹{bundleOriginalPrice}</span>
+                            <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">₹{bundlePrice}</span>
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        {isFullyOwned ? (
+                            <button
+                                disabled
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-100 py-3 text-sm font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Owned
+                            </button>
+                        ) : (
+                            <PaymentButton
+                                courseIds={unownedCourseIds}
+                                amount={bundlePrice}
+                                courseName={`${branch} - ${semester} Bundle`}
+                                className="w-full py-3"
+                            />
+                        )}
                     </div>
                 </div>
             </div>
