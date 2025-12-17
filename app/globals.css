@@ -90,6 +90,15 @@ iframe {
     box-sizing: border-box !important;
     margin-block: 1.5rem !important;
     overflow-x: auto;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+}
+
+.katex-display::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
 }
 
 .katex-display>.katex {
