@@ -27,13 +27,18 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
     }, [onClose]);
 
     // Scroll Lock Effect
+    // Scroll Lock Effect
     useEffect(() => {
-        const isMobile = window.matchMedia('(max-width: 767px)').matches;
-        if (isOpen && isMobile) {
+        if (isOpen) {
+            // Prevent background scrolling
             document.body.style.overflow = 'hidden';
+            // Also prevent overscroll chaining on body just in case
+            document.body.style.overscrollBehavior = 'none';
         }
         return () => {
             document.body.style.overflow = 'unset';
+            document.body.style.overscrollBehavior = 'unset';
+            // Restore simpler state if needed, 'unset' usually reverts to stylesheet
         };
     }, [isOpen]);
 
@@ -160,7 +165,7 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
             <div
                 ref={contentRef}
                 className={cn(
-                    "flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full max-w-full p-4 break-words h-full",
+                    "flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full max-w-full p-4 break-words h-full overscroll-y-contain",
                     isFullScreen
                         ? "p-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
                         : "p-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700"
