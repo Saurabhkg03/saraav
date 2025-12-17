@@ -114,21 +114,21 @@ export function LandingPage({ preloadedSubjects }: LandingPageProps) {
                     </h1>
 
                     <p className="mt-6 text-lg leading-8 text-zinc-600 max-w-2xl mx-auto dark:text-zinc-400">
-                        The smarter way to prepare for SGBAU exams. Master key concepts with <strong>high-frequency PYQs</strong>, <strong>expert text/video explanations</strong> and <strong>smart syllabus tracking</strong> in half the time.
+                        The smartest way to prepare for SGBAU exams. Master key concepts with <strong>high-frequency PYQs</strong>, <strong>expert text/video explanations</strong> and <strong>smart syllabus tracking</strong> in half the time.
                     </p>
 
                     <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link
-                            href="/marketplace"
+                            href="/login"
                             className="w-full sm:w-auto rounded-xl bg-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-500 hover:scale-105 transition-all duration-200"
                         >
                             Start Learning for Free
                         </Link>
                         <Link
-                            href="/login"
+                            href="/marketplace"
                             className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-white/50 px-8 py-4 text-base font-semibold text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 backdrop-blur-sm transition-all duration-200 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-white dark:hover:bg-zinc-800 dark:hover:border-zinc-700"
                         >
-                            Explore Features
+                            Explore Courses
                         </Link>
                     </div>
 

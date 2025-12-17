@@ -108,7 +108,7 @@ export default function Dashboard() {
 
   // 2. Not Logged In: Show Landing Page IMMEDIATELY (Don't wait for subjects)
   if (!user) {
-    return <LandingPage preloadedSubjects={[]} />;
+    return <LandingPage />;
   }
 
   // 3. Logged In, but Subjects Loading: Show Dashboard Skeleton
