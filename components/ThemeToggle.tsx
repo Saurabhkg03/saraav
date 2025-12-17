@@ -15,7 +15,10 @@ export function ThemeToggle() {
 
     if (!mounted) {
         return (
-            <button className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <button
+                suppressHydrationWarning
+                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
                 <Sun className="h-5 w-5" />
             </button>
         );
@@ -23,6 +26,7 @@ export function ThemeToggle() {
 
     return (
         <button
+            suppressHydrationWarning
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-colors"
             title="Toggle Theme"

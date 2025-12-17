@@ -292,7 +292,7 @@ export default function Dashboard() {
       {/* Featured Marketplace Section */}
       <section>
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Featured Bundles</h2>
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Bundles for you</h2>
           <Link href="/marketplace" className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
             View All <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
@@ -301,7 +301,7 @@ export default function Dashboard() {
           {featuredBundles.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
               <p className="text-zinc-500 dark:text-zinc-400">
-                No featured bundles found for your branch ({userBranch || "None"}).
+                No bundles found for you ({userBranch || "None"}).
               </p>
               <Link href="/marketplace" className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-500">
                 Browse all courses

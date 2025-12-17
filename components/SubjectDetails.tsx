@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, CheckCircle, ShoppingCart, Loader2, AlertCircle, Lock } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle, CheckCircle2, ShoppingCart, Loader2, AlertCircle, Lock } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { SubjectMetadata } from "@/lib/types";
@@ -28,12 +28,19 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
 
     const isPurchased = purchasedCourseIds.includes(subjectId);
 
-    // Calculate bundle course IDs (All subjects in same branch & semester)
-    const bundleCourseIds = metadata && !subjectsLoading
-        ? subjects
-            .filter(s => s.branch === metadata.branch && s.semester === metadata.semester)
-            .map(s => s.id)
+    // Calculate bundle logic
+    const bundleSubjects = metadata && !subjectsLoading
+        ? subjects.filter(s => s.branch === metadata.branch && s.semester === metadata.semester)
         : [];
+
+    const bundleCourseIds = bundleSubjects.map(s => s.id);
+    const unownedBundleSubjects = bundleSubjects.filter(s => !purchasedCourseIds.includes(s.id));
+
+    // Bundle Price Calculation
+    const bundlePrice = unownedBundleSubjects.reduce((sum, s) => sum + (s.price || 0), 0);
+    const bundleOriginalPrice = unownedBundleSubjects.reduce((sum, s) => sum + (s.originalPrice || s.price || 0), 0);
+    const unownedBundleCourseIds = unownedBundleSubjects.map(s => s.id);
+    const isBundleFullyOwned = bundleSubjects.length > 0 && bundleSubjects.every(s => purchasedCourseIds.includes(s.id));
 
     useEffect(() => {
         const fetchSubjectData = async () => {
@@ -116,7 +123,7 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 pb-32 py-8 lg:pb-8">
             <Link
                 href="/marketplace"
                 className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
@@ -146,66 +153,12 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
                         </span>
                     </div>
 
-                    {/* Mobile Purchase Card */}
+                    {/* Mobile Purchase Card - HIDDEN/REMOVED in favor of sticky footer */}
+                    {/* 
                     <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
-                        <div className="mb-6">
-                            {!settingsLoading && settings.isPaymentEnabled ? (
-                                metadata.price !== undefined ? (
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                                            ₹{metadata.price}
-                                        </span>
-                                        {metadata.originalPrice && metadata.originalPrice > metadata.price && (
-                                            <>
-                                                <span className="text-sm text-zinc-500 line-through dark:text-zinc-400">
-                                                    ₹{metadata.originalPrice}
-                                                </span>
-                                                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                    {Math.round(((metadata.originalPrice - metadata.price) / metadata.originalPrice) * 100)}% OFF
-                                                </span>
-                                            </>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Free</span>
-                                )
-                            ) : (
-                                <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Free Enrollment</span>
-                            )}
-                        </div>
-
-                        {isPurchased ? (
-                            <Link
-                                href={`/study/${subjectId}`}
-                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-green-700"
-                            >
-                                <BookOpen className="h-5 w-5" />
-                                Go to Course
-                            </Link>
-                        ) : (
-                            <PaymentButton
-                                courseId={subjectId}
-                                courseIds={bundleCourseIds}
-                                amount={metadata.price || 0}
-                                courseName={metadata.title}
-                            />
-                        )}
-
-                        <div className="mt-6 space-y-4 border-t border-zinc-100 pt-6 dark:border-zinc-800">
-                            <div className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400">
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                                <span>Valid for {settings.courseDurationMonths || 5} months</span>
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400">
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                                <span>Access on mobile and desktop</span>
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400">
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                                <span>Certificate of completion</span>
-                            </div>
-                        </div>
-                    </div>
+                       ... content removed ...
+                    </div> 
+                    */}
 
                     <div>
                         <h2 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-100">Course Content</h2>
@@ -287,6 +240,37 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
                                 <span>Certificate of completion</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Sticky Footer - Bundle Enrollment */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Bundle Price ({unownedBundleSubjects.length} subs)</p>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-sm text-zinc-400 line-through">₹{bundleOriginalPrice}</span>
+                            <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">₹{bundlePrice}</span>
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        {isBundleFullyOwned ? (
+                            <button
+                                disabled
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-100 py-3 text-sm font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Bundle Owned
+                            </button>
+                        ) : (
+                            <PaymentButton
+                                courseIds={unownedBundleCourseIds}
+                                amount={bundlePrice}
+                                courseName={`${metadata.branch} - ${metadata.semester} Bundle`}
+                                className="w-full py-3"
+                            />
+                        )}
                     </div>
                 </div>
             </div>

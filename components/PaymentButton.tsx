@@ -19,7 +19,7 @@ interface PaymentButtonProps {
 
 export function PaymentButton({ courseId, courseIds, amount, courseName, className }: PaymentButtonProps) {
     const [loading, setLoading] = useState(false);
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const { settings, loading: settingsLoading } = useSettings();
     const router = useRouter();
 
@@ -51,6 +51,7 @@ export function PaymentButton({ courseId, courseIds, amount, courseName, classNa
 
                 if (result.success) {
                     toast.success('Enrolled Successfully!');
+                    await refreshUser(); // Refresh user data immediately
                     router.refresh();
                     if (courseId) {
                         router.push(`/study/${courseId}`);
@@ -122,6 +123,7 @@ export function PaymentButton({ courseId, courseIds, amount, courseName, classNa
 
                         if (verifyResult.success) {
                             toast.success('Payment Successful! Course unlocked.');
+                            await refreshUser(); // Refresh user data immediately
                             router.refresh();
                             if (courseId) {
                                 router.push(`/study/${courseId}`);

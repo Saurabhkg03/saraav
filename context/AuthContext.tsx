@@ -26,6 +26,7 @@ interface AuthContextType {
     purchaseCourse: (courseId: string) => Promise<void>;
     updateProfile: (data: { branch?: string; year?: string }) => Promise<void>;
     checkAccess: (courseId: string) => boolean;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -39,6 +40,7 @@ const AuthContext = createContext<AuthContextType>({
     purchaseCourse: async () => { },
     updateProfile: async () => { },
     checkAccess: () => false,
+    refreshUser: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -50,6 +52,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [branch, setBranch] = useState<string>();
     const [year, setYear] = useState<string>();
     const [progress, setProgress] = useState<UserProfile['progress']>({});
+
+    const refreshUser = async () => {
+        if (!user) return;
+        try {
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+                const data = userDocSnap.data();
+                setPurchasedCourseIds(data.purchasedCourseIds || []);
+                setPurchases(data.purchases || {});
+                setBranch(data.branch);
+                setYear(data.year);
+            }
+        } catch (error) {
+            console.error("Error refreshing user data:", error);
+        }
+    };
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -244,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, isAdmin, purchasedCourseIds, branch, year, progress, login, logout, purchaseCourse, updateProfile, checkAccess, purchases }}>
+        <AuthContext.Provider value={{ user, loading, isAdmin, purchasedCourseIds, branch, year, progress, login, logout, purchaseCourse, updateProfile, checkAccess, purchases, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
