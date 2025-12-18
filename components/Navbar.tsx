@@ -12,7 +12,6 @@ const BRANCHES = [
     "Computer Science & Engineering",
     "Information Technology",
     "Electronics & Telecommunication",
-    "Civil Engineering",
     "Mechanical Engineering",
     "Electrical Engineering"
 ];

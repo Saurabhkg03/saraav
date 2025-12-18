@@ -35,7 +35,8 @@ export function MarketplaceContent({ initialSubjects }: MarketplaceContentProps)
             const semester = subject.semester || "All Semesters";
 
             // Filter Logic
-            if (selectedBranch && branch !== selectedBranch) return;
+            // Filter Logic
+            if (selectedBranch && branch !== selectedBranch && branch !== "Common Electives") return;
             if (selectedSemester && semester !== selectedSemester) return;
             if (searchQuery) {
                 const queryTerms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
@@ -123,9 +124,9 @@ export function MarketplaceContent({ initialSubjects }: MarketplaceContentProps)
                                 <option value="Computer Science & Engineering">Computer Science & Engineering</option>
                                 <option value="Information Technology">Information Technology</option>
                                 <option value="Electronics & Telecommunication">Electronics & Telecommunication</option>
-                                <option value="Civil Engineering">Civil Engineering</option>
                                 <option value="Mechanical Engineering">Mechanical Engineering</option>
                                 <option value="Electrical Engineering">Electrical Engineering</option>
+                                <option value="Common Electives">Common Electives</option>
                             </select>
 
                             <select

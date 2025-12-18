@@ -61,7 +61,7 @@ export function LandingPage({ preloadedSubjects }: LandingPageProps) {
     const seenBranches = new Set<string>();
 
     // specific order of preference if available, else standard order
-    const preferredBranches = ["Computer Science & Engineering", "Civil Engineering", "Mechanical Engineering", "Electronics & Telecommunication"];
+    const preferredBranches = ["Computer Science & Engineering", "Mechanical Engineering", "Electronics & Telecommunication"];
 
     // Sort bundles to prioritize preferred branches and populated bundles
     allBundlesList.sort((a, b) => {

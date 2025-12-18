@@ -180,9 +180,9 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
                                 <option value="Computer Science & Engineering">Computer Science & Engineering</option>
                                 <option value="Information Technology">Information Technology</option>
                                 <option value="Electronics & Telecommunication">Electronics & Telecommunication</option>
-                                <option value="Civil Engineering">Civil Engineering</option>
                                 <option value="Mechanical Engineering">Mechanical Engineering</option>
                                 <option value="Electrical Engineering">Electrical Engineering</option>
+                                <option value="Common Electives">Common Electives</option>
                             </select>
                         </div>
                         <div>
