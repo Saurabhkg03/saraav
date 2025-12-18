@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next';
 import { adminDb } from '@/lib/firebase-admin';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://saraav.com';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://saraav.in';
 
     // Static routes
     const routes = [
