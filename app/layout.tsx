@@ -12,6 +12,8 @@ import { Toaster } from "sonner";
 import { FeedbackProvider } from "@/context/FeedbackContext";
 import { FeedbackReminder } from "@/components/FeedbackReminder";
 import JsonLd from "@/components/JsonLd";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -84,6 +86,8 @@ export default function RootLayout({
           <AuthProvider>
             <FeedbackProvider>
               <JsonLd />
+              <Analytics />
+              <SpeedInsights />
               <FeedbackReminder />
               <div className="flex min-h-screen flex-col bg-white dark:bg-black">
                 <Navbar />
