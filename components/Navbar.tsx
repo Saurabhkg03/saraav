@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Logo } from '@/components/Logo';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { NotificationDropdown } from '@/components/NotificationDropdown';
 
 const BRANCHES = [
     "Computer Science & Engineering",
@@ -128,6 +129,8 @@ export function Navbar() {
                             <span>Browse Courses</span>
                         </Link>
 
+                        <NotificationDropdown />
+
                         <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800" />
 
                         <ThemeToggle />
@@ -154,7 +157,7 @@ export function Navbar() {
 
                     {/* Mobile Menu Button */}
                     <div className="flex items-center gap-3 md:hidden">
-
+                        <NotificationDropdown />
                         <ThemeToggle />
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

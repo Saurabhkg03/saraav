@@ -94,6 +94,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // 6. ANNOUNCEMENTS
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // 6. DEFAULT DENY
     match /{document=**} {
       allow read, write: if false;

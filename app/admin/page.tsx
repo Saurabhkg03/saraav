@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Upload, Trash2, BookOpen, Flag, MessageSquare } from 'lucide-react';
+import { Plus, Upload, Trash2, BookOpen, Flag, MessageSquare, Megaphone } from 'lucide-react';
 import { useSubjects } from '@/hooks/useSubjects';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -177,6 +177,14 @@ export default function AdminPage() {
                     >
                         <MessageSquare className="h-4 w-4" />
                         Feedback
+                    </button>
+
+                    <button
+                        onClick={() => router.push('/admin/announcements')}
+                        className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+                    >
+                        <Megaphone className="h-4 w-4" />
+                        Announcements
                     </button>
 
                     <button
