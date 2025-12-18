@@ -11,6 +11,7 @@ import { LayoutWrapper } from "@/components/LayoutWrapper";
 import { Toaster } from "sonner";
 import { FeedbackProvider } from "@/context/FeedbackContext";
 import { FeedbackReminder } from "@/components/FeedbackReminder";
+import JsonLd from "@/components/JsonLd";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,11 +22,13 @@ export const metadata: Metadata = {
     template: "%s | Saraav"
   },
   description: "Ace your SGBAU engineering exams with Saraav. Access previous year questions, expert video solutions, and syllabus tracking.",
-  keywords: ["SGBAU", "Amravati University", "Engineering Exams", "PYQ", "Previous Year Questions", "Exam Prep"],
+  keywords: ["SGBAU", "Amravati University", "Engineering Exams", "PYQ", "Previous Year Questions", "Exam Prep", "Saraav", "Engineering Solutions"],
 
   icons: {
     icon: [
       { url: '/favicon.ico' },
+      // Prefer logo.jpg if icon.png is not optimal, or stick to icon.png if it's the favicon version. 
+      // User has `icon.png` in public, keeping it.
       { url: '/icon.png', sizes: '192x192', type: 'image/png' },
     ],
     apple: [
@@ -40,11 +43,20 @@ export const metadata: Metadata = {
     siteName: 'Saraav',
     locale: 'en_IN',
     type: 'website',
+    images: [
+      {
+        url: '/logo.jpg', // Explicitly using logo.jpg as requested for "my logo"
+        width: 1200,
+        height: 630,
+        alt: 'Saraav Logo',
+      }
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: "Saraav | SGBAU Exam Prep",
     description: "Don't study blindly. Get the most asked questions and solutions for Amravati University exams.",
+    images: ['/logo.jpg'], // Consistent image
   }
 };
 
@@ -71,6 +83,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             <FeedbackProvider>
+              <JsonLd />
               <FeedbackReminder />
               <div className="flex min-h-screen flex-col bg-white dark:bg-black">
                 <Navbar />
