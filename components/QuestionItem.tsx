@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronUp, Copy, ExternalLink, Flag, ImageIcon, Maximize2, Minimize2, Plus, Star, StickyNote, Trash2, X, Youtube } from 'lucide-react';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -60,6 +60,14 @@ export function QuestionItem({
 
     const [loadingNote, setLoadingNote] = useState(false);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+    // Automatically load solution if editing and it's not available
+    useEffect(() => {
+        if (isEditing && !question.solution && !cachedSolution && question.hasSolution && onLoadSolution) {
+            setLoadingSolution(true);
+            onLoadSolution(question.id).finally(() => setLoadingSolution(false));
+        }
+    }, [isEditing, question.solution, cachedSolution, question.hasSolution, onLoadSolution, question.id]);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(question.text);
@@ -484,7 +492,7 @@ export function QuestionItem({
                                         <div>
                                             <label className="mb-2 block text-xs font-semibold uppercase text-zinc-500">Solution Text</label>
                                             <textarea
-                                                value={question.solution || ''}
+                                                value={question.solution ?? cachedSolution ?? ''}
                                                 onChange={(e) => onUpdate?.(question.id, { solution: e.target.value })}
                                                 className="h-64 w-full rounded border border-zinc-200 bg-white p-3 text-sm font-mono text-zinc-900 focus:border-indigo-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                                                 placeholder="Enter solution here..."
@@ -587,7 +595,7 @@ export function QuestionItem({
                                     <div className="prose prose-zinc max-w-none dark:prose-invert">
                                         <ErrorBoundary label="solution content">
                                             <MarkdownRenderer
-                                                content={solutionText || ''}
+                                                content={question.solution || cachedSolution || ''}
                                             />
                                         </ErrorBoundary>
                                         <div className="mt-6 flex items-center justify-center border-t border-zinc-100 pt-4 dark:border-zinc-800">
@@ -693,6 +701,6 @@ export function QuestionItem({
                 subjectId={subjectId}
                 unitId={unitId}
             />
-        </div>
+        </div >
     );
 }

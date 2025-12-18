@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, AlertCircle, Plus, ListChecks, Settings, Download, Star, ChevronDown, ChevronUp } from "lucide-react";
-import { doc, getDoc, updateDoc } from "firebase/firestore"; // Added updateDoc
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore"; // Added updateDoc, setDoc
 import { db } from "@/lib/firebase";
 import { Subject, SubjectMetadata, Unit, Question } from "@/lib/types"; // Added Question
 import { QuestionItem } from "@/components/QuestionItem";
@@ -124,12 +124,29 @@ export default function SubjectPage() {
                 q.id === questionId ? { ...q, ...updates } : q
             );
 
+            // Update Unit
             await updateDoc(doc(db, "subjects", subjectId, "units", unitId), {
                 questions: updatedQuestions
             });
+
+            // Update Solution Subcollection if solution text is provided
+            if (updates.solution !== undefined) {
+                // We use setDoc with merge: true so it creates if not exists
+                await setDoc(doc(db, "subjects", subjectId, "solutions", questionId), {
+                    text: updates.solution
+                }, { merge: true });
+
+                // Also update local loadedSolutions state
+                setLoadedSolutions(prev => ({
+                    ...prev,
+                    [questionId]: updates.solution as string
+                }));
+            }
+
             console.log("Question updated successfully");
         } catch (err) {
             console.error("Error updating question:", err);
+            // Revert optimistic update? (Optional enhancement)
         }
     };
 
