@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { SubjectMetadata } from "@/lib/types";
 import { EmptyState } from "@/components/EmptyState";
+import { getColorClass } from "@/lib/utils";
 
 interface MarketplaceContentProps {
     initialSubjects: SubjectMetadata[];
@@ -159,27 +160,29 @@ export function MarketplaceContent({ initialSubjects }: MarketplaceContentProps)
                     />
                 ) : (
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
+
                         {semesterBundles.map((bundle) => (
                             <Link
                                 key={bundle.id}
                                 href={`/marketplace/semester/${encodeURIComponent(bundle.id)}`}
                                 className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-zinc-300 bg-white transition-all hover:shadow-lg dark:border dark:border-zinc-800 dark:bg-zinc-900"
                             >
-                                <div className="flex h-32 flex-col items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-center">
-                                    <p className="mb-1 text-xs font-medium text-indigo-100 opacity-90">
-                                        {bundle.branch}
-                                    </p>
-                                    <h3 className="text-2xl font-bold text-white">
+                                <div className={`flex h-32 flex-col items-center justify-center bg-gradient-to-br p-6 text-center ${getColorClass(bundle.branch)}`}>
+                                    <p className="mb-1 text-lg font-medium text-white opacity-90">
                                         {bundle.semester}
+                                    </p>
+                                    <h3 className="text-2xl font-bold text-white line-clamp-2">
+                                        {bundle.branch}
                                     </h3>
                                 </div>
                                 <div className="flex flex-1 flex-col p-6">
                                     <div className="mb-4">
                                         <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                                            {bundle.branch}
-                                        </p>
-                                        <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100">
                                             {bundle.semester} Bundle
+                                        </p>
+                                        <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">
+                                            {bundle.branch}
                                         </h4>
                                     </div>
 

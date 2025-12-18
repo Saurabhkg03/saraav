@@ -297,21 +297,24 @@ export default function MyCoursesPage() {
                                 onClick={() => setViewingSemester(semester)}
                                 className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-zinc-300 bg-white transition-all hover:shadow-lg dark:border dark:border-zinc-800 dark:bg-zinc-900"
                             >
-                                <div className="flex h-32 flex-col items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-center">
-                                    <p className="mb-1 text-xs font-medium text-indigo-100 opacity-90">
-                                        {branch}
-                                    </p>
-                                    <h3 className="text-2xl font-bold text-white">
+                                <div className={cn(
+                                    "flex h-32 flex-col items-center justify-center bg-gradient-to-br p-6 text-center",
+                                    getColorClass(branch)
+                                )}>
+                                    <p className="mb-1 text-lg font-medium text-white opacity-90">
                                         {semester}
+                                    </p>
+                                    <h3 className="text-2xl font-bold text-white line-clamp-2">
+                                        {branch}
                                     </h3>
                                 </div>
                                 <div className="flex flex-1 flex-col p-6">
                                     <div className="mb-4">
                                         <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                                            {branch}
-                                        </p>
-                                        <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100">
                                             {semester} Bundle
+                                        </p>
+                                        <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">
+                                            {branch}
                                         </h4>
                                     </div>
                                     <div className="mt-auto flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">

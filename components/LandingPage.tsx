@@ -306,11 +306,11 @@ export function LandingPage({ preloadedSubjects }: LandingPageProps) {
                                         "flex h-full w-full flex-col items-center justify-center bg-gradient-to-br text-white transition-transform duration-500 group-hover:scale-110 p-4 text-center",
                                         getColorClass(bundle.branch) // Use branch for color
                                     )}>
-                                        <span className="text-xs font-medium uppercase tracking-wider opacity-80 mb-1 line-clamp-1 w-full px-2">
-                                            {bundle.branch}
-                                        </span>
-                                        <span className="text-3xl font-bold">
+                                        <span className="text-lg font-medium uppercase tracking-wider opacity-80 mb-1 line-clamp-1 w-full px-2">
                                             {bundle.semester}
+                                        </span>
+                                        <span className="text-3xl font-bold line-clamp-2">
+                                            {bundle.branch}
                                         </span>
                                     </div>
                                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors dark:bg-black/20" />
@@ -319,13 +319,13 @@ export function LandingPage({ preloadedSubjects }: LandingPageProps) {
                                 <div className="flex flex-1 flex-col p-6">
                                     <div className="flex items-center gap-x-2 text-xs font-medium text-indigo-600 mb-3 dark:text-indigo-400">
                                         <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 border border-indigo-100 dark:bg-indigo-500/10 dark:border-indigo-500/20">
-                                            Semester Bundle
+                                            {bundle.semester} Bundle
                                         </span>
                                         <span className="text-zinc-400 dark:text-zinc-500">•</span>
                                         <span className="text-zinc-500 dark:text-zinc-400">{bundle.branch}</span>
                                     </div>
 
-                                    <h3 className="text-xl font-bold text-zinc-900 mb-2 line-clamp-1 group-hover:text-indigo-600 transition-colors dark:text-white dark:group-hover:text-indigo-400">
+                                    <h3 className="text-2xl font-bold text-zinc-900 mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors dark:text-white dark:group-hover:text-indigo-400">
                                         {bundle.branch}
                                     </h3>
 

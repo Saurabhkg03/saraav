@@ -298,6 +298,7 @@ export default function Dashboard() {
           </Link>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
           {featuredBundles.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
               <p className="text-zinc-500 dark:text-zinc-400">
@@ -319,22 +320,25 @@ export default function Dashboard() {
                     <Star className="mr-1 inline-block h-3 w-3 fill-current" />
                     Featured
                   </div>
-                  <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-center">
-                    <p className="mb-1 text-xs font-medium text-indigo-100 opacity-90">
-                      {bundle.branch}
-                    </p>
-                    <h3 className="text-2xl font-bold text-white">
+                  <div className={cn(
+                    "flex h-full w-full flex-col items-center justify-center bg-gradient-to-br p-6 text-center",
+                    getColorClass(bundle.branch)
+                  )}>
+                    <p className="mb-1 text-lg font-medium text-white opacity-90">
                       {bundle.semester}
+                    </p>
+                    <h3 className="text-2xl font-bold text-white line-clamp-2">
+                      {bundle.branch}
                     </h3>
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col p-6">
                   <div className="mb-4">
                     <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                      {bundle.branch}
-                    </p>
-                    <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100">
                       {bundle.semester} Bundle
+                    </p>
+                    <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">
+                      {bundle.branch}
                     </h4>
                   </div>
 
@@ -380,21 +384,21 @@ export default function Dashboard() {
                   "flex h-full w-full flex-col items-center justify-center bg-gradient-to-br p-6 text-center",
                   getColorClass(bundle.branch)
                 )}>
-                  <p className="mb-1 text-xs font-medium text-white/90 opacity-90">
-                    {bundle.branch}
-                  </p>
-                  <h3 className="text-2xl font-bold text-white">
+                  <p className="mb-1 text-lg font-medium text-white/90 opacity-90">
                     {bundle.semester}
+                  </p>
+                  <h3 className="text-2xl font-bold text-white line-clamp-2">
+                    {bundle.branch}
                   </h3>
                 </div>
               </div>
               <div className="flex flex-1 flex-col p-6">
                 <div className="mb-4">
                   <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                    {bundle.branch}
-                  </p>
-                  <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100">
                     {bundle.semester} Bundle
+                  </p>
+                  <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">
+                    {bundle.branch}
                   </h4>
                 </div>
 
