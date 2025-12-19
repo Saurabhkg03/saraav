@@ -35,16 +35,36 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Payments are enabled. Cannot enroll for free.' }, { status: 403 });
         }
 
+
         // Enroll user using verified userId
-        if (courseIds && Array.isArray(courseIds)) {
-            await adminDb.collection('users').doc(userId).update({
-                purchasedCourseIds: FieldValue.arrayUnion(...courseIds),
-            });
-        } else {
-            await adminDb.collection('users').doc(userId).update({
-                purchasedCourseIds: FieldValue.arrayUnion(courseId),
-            });
-        }
+
+        // 1. Fetch Course Duration Settings
+        const durationMonths = settingsDoc.exists ? (settingsDoc.data()?.courseDurationMonths || 1) : 1;
+
+        // 2. Calculate Expiry
+        const purchaseDate = Date.now();
+        const expiryDateObj = new Date();
+        expiryDateObj.setMonth(expiryDateObj.getMonth() + durationMonths);
+        const expiryDate = expiryDateObj.getTime();
+
+        const purchaseData = {
+            purchaseDate,
+            expiryDate,
+            durationMonths,
+            type: 'manual_enrollment'
+        };
+
+        const updates: any = {};
+        const coursesToEnroll = (courseIds && Array.isArray(courseIds)) ? courseIds : [courseId];
+
+        updates.purchasedCourseIds = FieldValue.arrayUnion(...coursesToEnroll);
+
+        // Add purchase details for EACH course
+        coursesToEnroll.forEach((cid: string) => {
+            updates[`purchases.${cid}`] = purchaseData;
+        });
+
+        await adminDb.collection('users').doc(userId).update(updates);
 
         return NextResponse.json({ success: true });
     } catch (error) {

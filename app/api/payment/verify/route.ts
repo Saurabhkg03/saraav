@@ -42,6 +42,7 @@ export async function POST(req: Request) {
             );
         }
 
+
         const body = razorpay_order_id + '|' + razorpay_payment_id;
         const expectedSignature = crypto
             .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
@@ -49,16 +50,41 @@ export async function POST(req: Request) {
             .digest('hex');
 
         if (expectedSignature === razorpay_signature) {
-            // Signature is valid, update user's purchased courses
-            if (reqBody.courseIds && Array.isArray(reqBody.courseIds)) {
-                await adminDb.collection('users').doc(userId).update({
-                    purchasedCourseIds: FieldValue.arrayUnion(...reqBody.courseIds),
-                });
-            } else {
-                await adminDb.collection('users').doc(userId).update({
-                    purchasedCourseIds: FieldValue.arrayUnion(courseId),
-                });
-            }
+            // Signature is valid
+
+            // 1. Fetch Course Duration Settings
+            const settingsDoc = await adminDb.collection('settings').doc('global').get();
+            const durationMonths = settingsDoc.exists ? (settingsDoc.data()?.courseDurationMonths || 1) : 1;
+
+            // 2. Calculate Expiry
+            const purchaseDate = Date.now();
+            const expiryDateObj = new Date();
+            expiryDateObj.setMonth(expiryDateObj.getMonth() + durationMonths);
+            const expiryDate = expiryDateObj.getTime();
+
+            const purchaseData = {
+                purchaseDate,
+                expiryDate,
+                durationMonths,
+                orderId: razorpay_order_id,
+                paymentId: razorpay_payment_id
+            };
+
+            // 3. Prepare Updates
+            const updates: any = {};
+            const coursesToEnroll = (reqBody.courseIds && Array.isArray(reqBody.courseIds))
+                ? reqBody.courseIds
+                : [courseId];
+
+            // Add IDs to array
+            updates.purchasedCourseIds = FieldValue.arrayUnion(...coursesToEnroll);
+
+            // Add purchase details for EACH course
+            coursesToEnroll.forEach((cid: string) => {
+                updates[`purchases.${cid}`] = purchaseData;
+            });
+
+            await adminDb.collection('users').doc(userId).update(updates);
 
             return NextResponse.json({ success: true });
         } else {
