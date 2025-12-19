@@ -8,7 +8,7 @@ import {
     signInWithPopup,
     signOut
 } from "firebase/auth";
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, getDocFromServer } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { UserProfile } from "@/lib/types";
 
@@ -57,7 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!user) return;
         try {
             const userDocRef = doc(db, "users", user.uid);
-            const userDocSnap = await getDoc(userDocRef);
+            // Force fetch from server to bypass local cache, ensuring we get the latest
+            // purchasedCourseIds updated by the API/Backend.
+            const userDocSnap = await getDocFromServer(userDocRef);
 
             if (userDocSnap.exists()) {
                 const data = userDocSnap.data();

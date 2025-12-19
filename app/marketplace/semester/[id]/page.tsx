@@ -221,31 +221,35 @@ export default function SemesterBundlePage() {
                                     <span className="font-medium text-zinc-900 dark:text-zinc-100">{bundleSubjects.length}</span>
                                 </div>
 
-                                <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                                {isFullyOwned ? (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-base font-medium text-zinc-900 dark:text-zinc-100">Total Price</span>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-lg text-zinc-400 line-through">₹{bundleOriginalPrice}</span>
-                                            <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">₹{bundlePrice}</span>
-                                        </div>
+                                        <span className="text-base font-medium text-zinc-900 dark:text-zinc-100">Status</span>
+                                        <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                            Owned
+                                        </span>
                                     </div>
-                                    {unownedSubjects.length < bundleSubjects.length && (
-                                        <p className="mt-1 text-xs text-zinc-500 text-right">
-                                            (Adjusted for owned courses)
-                                        </p>
-                                    )}
-                                </div>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-base font-medium text-zinc-900 dark:text-zinc-100">Total Price</span>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-lg text-zinc-400 line-through">₹{bundleOriginalPrice}</span>
+                                                <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">₹{bundlePrice}</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div className="mt-8">
                                 {isFullyOwned ? (
-                                    <button
-                                        disabled
-                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-100 px-8 py-4 text-base font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                    <Link
+                                        href={`/courses?bundle=${encodeURIComponent(`${branch}-${semester}`)}`}
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-8 py-4 text-base font-semibold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl"
                                     >
-                                        <CheckCircle2 className="h-5 w-5" />
-                                        Bundle Owned
-                                    </button>
+                                        <BookOpen className="h-5 w-5" />
+                                        Go to Bundle
+                                    </Link>
                                 ) : (
                                     <PaymentButton
                                         courseIds={unownedCourseIds}
@@ -262,22 +266,29 @@ export default function SemesterBundlePage() {
             {/* Mobile Sticky Footer */}
             <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
                 <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Total Price</p>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-sm text-zinc-400 line-through">₹{bundleOriginalPrice}</span>
-                            <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">₹{bundlePrice}</span>
+                    {isFullyOwned ? (
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />
+                            <span className="font-bold text-zinc-900 dark:text-zinc-100">Bundle Owned</span>
                         </div>
-                    </div>
+                    ) : (
+                        <div>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">Total Price</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-sm text-zinc-400 line-through">₹{bundleOriginalPrice}</span>
+                                <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">₹{bundlePrice}</span>
+                            </div>
+                        </div>
+                    )}
                     <div className="flex-1">
                         {isFullyOwned ? (
-                            <button
-                                disabled
-                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-100 py-3 text-sm font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            <Link
+                                href={`/courses?bundle=${encodeURIComponent(`${branch}-${semester}`)}`}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-green-700"
                             >
-                                <CheckCircle2 className="h-4 w-4" />
-                                Owned
-                            </button>
+                                <BookOpen className="h-4 w-4" />
+                                Go to Bundle
+                            </Link>
                         ) : (
                             <PaymentButton
                                 courseIds={unownedCourseIds}

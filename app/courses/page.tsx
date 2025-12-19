@@ -8,6 +8,7 @@ import { BookOpen, AlertCircle, PlayCircle, ArrowLeft, Search } from 'lucide-rea
 import { cn, getInitials, getColorClass } from '@/lib/utils';
 import { QuestionProgress } from '@/lib/types';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { EmptyState } from '@/components/EmptyState';
 
 export default function MyCoursesPage() {
@@ -22,6 +23,15 @@ export default function MyCoursesPage() {
 
     // Track which folder is open: { semester: "Semester 3", category: "Elective I" }
     const [expandedFolder, setExpandedFolder] = useState<{ semester: string; category: string } | null>(null);
+
+    const searchParams = useSearchParams();
+    const bundleParam = searchParams.get('bundle');
+
+    useEffect(() => {
+        if (bundleParam) {
+            setViewingSemester(bundleParam);
+        }
+    }, [bundleParam]);
 
     // Fetch only purchased courses
     useEffect(() => {
@@ -64,39 +74,51 @@ export default function MyCoursesPage() {
         return subjects; // Subjects are already filtered by fetching strategy
     }, [subjects]);
 
-    // Derived State: Sorted Semesters by Latest Purchase
-    const sortedSemesters = useMemo(() => {
+    // Derived State: Sorted Bundles by Latest Purchase
+    const sortedBundles = useMemo(() => {
+        // Group by Bundle ID (Branch + Semester)
         const groups = myCourses.reduce((acc, subject) => {
+            const branch = subject.branch || 'General';
             const semester = subject.semester || 'Other';
-            if (!acc[semester]) acc[semester] = [];
-            acc[semester].push(subject);
+
+            // Create a unique key for the bundle
+            // If "Common Electives", it might need special handling, but let's treat it as a bundle for now
+            const bundleKey = `${branch}-${semester}`;
+
+            if (!acc[bundleKey]) {
+                acc[bundleKey] = {
+                    branch,
+                    semester,
+                    subjects: [],
+                    lastPurchased: 0
+                };
+            }
+
+            acc[bundleKey].subjects.push(subject);
             return acc;
-        }, {} as Record<string, typeof myCourses>);
+        }, {} as Record<string, { branch: string; semester: string; subjects: SubjectMetadata[]; lastPurchased: number }>);
 
-        return Object.keys(groups).sort((a, b) => {
-            // Helper to get latest purchase time for a semester
-            const getLatestPurchase = (semester: string) => {
-                const courses = groups[semester];
-                let maxTime = 0;
-                courses.forEach(c => {
-                    const time = purchases?.[c.id]?.purchaseDate || 0;
-                    if (time > maxTime) maxTime = time;
-                });
-                return maxTime;
-            };
+        // Calculate last purchased time for each bundle
+        Object.values(groups).forEach(group => {
+            let maxTime = 0;
+            group.subjects.forEach(c => {
+                const time = purchases?.[c.id]?.purchaseDate || 0;
+                if (time > maxTime) maxTime = time;
+            });
+            group.lastPurchased = maxTime;
+        });
 
-            const timeA = getLatestPurchase(a);
-            const timeB = getLatestPurchase(b);
+        // Sort Bundles
+        return Object.entries(groups).sort(([, a], [, b]) => {
+            // 1. By Latest Purchase Time
+            if (a.lastPurchased !== b.lastPurchased) return b.lastPurchased - a.lastPurchased;
 
-            // Sort by time descending
-            if (timeA !== timeB) return timeB - timeA;
-
-            // Fallback to Semester Number sorting
+            // 2. By Semester Number (Fallback)
             const getNum = (sem: string) => {
                 const match = sem.match(/\d+/);
                 return match ? parseInt(match[0], 10) : 999;
             };
-            return getNum(a) - getNum(b);
+            return getNum(a.semester) - getNum(b.semester);
         });
     }, [myCourses, purchases]);
 
@@ -109,22 +131,11 @@ export default function MyCoursesPage() {
             (s.branch && s.branch.toLowerCase().includes(lowerQ)) ||
             (s.semester && s.semester.toLowerCase().includes(lowerQ))
         ).sort((a, b) => {
-            // Sort search results by latest purchase first
             const timeA = purchases?.[a.id]?.purchaseDate || 0;
             const timeB = purchases?.[b.id]?.purchaseDate || 0;
             return timeB - timeA;
         });
     }, [myCourses, searchQuery, purchases]);
-
-    const semesterGroups = useMemo(() => {
-        return myCourses.reduce((acc, subject) => {
-            const semester = subject.semester || 'Other';
-            if (!acc[semester]) acc[semester] = [];
-            acc[semester].push(subject);
-            return acc;
-        }, {} as Record<string, typeof myCourses>);
-    }, [myCourses]);
-
 
     if (loading || authLoading) {
         return (
@@ -323,22 +334,20 @@ export default function MyCoursesPage() {
                     )}
                 </div>
             ) : !viewingSemester ? (
-                // VIEW 1: All Semesters (Folders) - Sorted by Latest Purchase
+                // VIEW 1: All Bundles (Branches) - Sorted by Latest Purchase
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {sortedSemesters.map((semester) => {
-                        const subjectsInSemester = semesterGroups[semester];
-                        // Attempt to find a branch name from the first subject, or default
-                        const branch = subjectsInSemester[0]?.branch || "General Engineering";
-                        const subjectCount = subjectsInSemester.length;
+                    {sortedBundles.map(([bundleId, bundleData]) => {
+                        const { branch, semester, subjects } = bundleData;
+                        const subjectCount = subjects.length;
 
                         return (
                             <div
-                                key={semester}
-                                onClick={() => setViewingSemester(semester)}
+                                key={bundleId}
+                                onClick={() => setViewingSemester(bundleId)} // Using bundleId as key now
                                 className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-zinc-300 bg-white transition-all hover:shadow-lg dark:border dark:border-zinc-800 dark:bg-zinc-900"
                             >
                                 <div className={cn(
-                                    "flex min-h-[8rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center",
+                                    "flex min-h-[9rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center",
                                     getColorClass(branch)
                                 )}>
                                     <p className="mb-1 text-sm font-medium text-white opacity-90">
@@ -374,15 +383,27 @@ export default function MyCoursesPage() {
                     })}
                 </div>
             ) : (
-                // VIEW 2: Specific Semester (Core + Elective Folders)
+                // VIEW 2: Specific Bundle (Core + Elective Folders)
                 <div className="space-y-12">
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 border-b border-zinc-200 pb-2 dark:border-zinc-800">
-                        {viewingSemester}
-                    </h2>
+                    {/* Header for the open bundle */}
+                    {(() => {
+                        const bundleData = sortedBundles.find(([k]) => k === viewingSemester)?.[1];
+                        if (!bundleData) return null;
+
+                        return (
+                            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 border-b border-zinc-200 pb-2 dark:border-zinc-800">
+                                {bundleData.branch} - {bundleData.semester}
+                            </h2>
+                        );
+                    })()}
 
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {(() => {
-                            const semesterCourses = semesterGroups[viewingSemester];
+                            // viewingSemester is now the bundleId (e.g. "CSE-Sem3")
+                            const bundleData = sortedBundles.find(([k]) => k === viewingSemester)?.[1];
+                            if (!bundleData) return <div>Bundle not found</div>;
+
+                            const semesterCourses = bundleData.subjects;
                             const activeCategory = expandedFolder?.semester === viewingSemester ? expandedFolder.category : null;
 
                             // Filter Logic
@@ -435,4 +456,5 @@ export default function MyCoursesPage() {
             )}
         </div>
     );
+
 }
