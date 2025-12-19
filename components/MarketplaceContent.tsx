@@ -12,71 +12,55 @@ interface MarketplaceContentProps {
     initialSubjects: SubjectMetadata[];
 }
 
-export function MarketplaceContent({ initialSubjects }: MarketplaceContentProps) {
+export function MarketplaceContent({ initialBundles }: { initialBundles: any[] }) {
     const { branch: userBranch, year: userYear } = useAuth();
     const [selectedBranch, setSelectedBranch] = useState("");
     const [selectedSemester, setSelectedSemester] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
-    // Group subjects by Branch + Semester
-    const semesterBundles = useMemo(() => {
-        const groups: Record<string, {
-            id: string;
-            branch: string;
-            semester: string;
-            subjects: any[];
-            totalPrice: number;
-            totalOriginalPrice: number;
-            subjectCount: number;
-        }> = {};
+    // Filter bundles based on Branch, Semester, and Search Query
+    const filteredBundles = useMemo(() => {
+        return initialBundles.filter(bundle => {
+            // 1. Branch Filter
+            if (selectedBranch && bundle.branch !== selectedBranch && bundle.branch !== "Common Electives") return false;
 
-        initialSubjects.forEach(subject => {
-            // Fallback for missing data
-            const branch = subject.branch || "General";
-            const semester = subject.semester || "All Semesters";
+            // 2. Semester Filter
+            if (selectedSemester && bundle.semester !== selectedSemester) return false;
 
-            // Filter Logic
-            // Filter Logic
-            if (selectedBranch && branch !== selectedBranch && branch !== "Common Electives") return;
-            if (selectedSemester && semester !== selectedSemester) return;
+            // 3. Search Query
             if (searchQuery) {
                 const queryTerms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
 
                 // Add common acronyms for better search experience
                 let acronyms = "";
-                const b = branch.toLowerCase();
+                const b = bundle.branch.toLowerCase();
                 if (b.includes("computer")) acronyms = "cse cs";
                 else if (b.includes("information")) acronyms = "it";
                 else if (b.includes("electronics")) acronyms = "entc extc";
                 else if (b.includes("mechanical")) acronyms = "mech";
 
-                const searchableText = `${subject.title} ${branch} ${semester} ${acronyms}`.toLowerCase();
+                // Check Bundle Level Matches
+                const bundleText = `${bundle.branch} ${bundle.semester} ${acronyms}`.toLowerCase();
+                const bundleMatches = queryTerms.every(term => bundleText.includes(term));
 
-                // Check if ALL search terms are present in the text (Order independent)
-                if (!queryTerms.every(term => searchableText.includes(term))) return;
+                if (bundleMatches) return true;
+
+                // Check Subject Level Matches (searching inside the bundle)
+                // If any subject in the bundle matches the search, we include the bundle
+                // But typically users want to see the specific subject. 
+                // However, our UI displays BUNDLES, not subjects.
+                // So if I search "Data Structures", I should see "Computer Science Semester 3".
+
+                const hasMatchingSubject = bundle.subjects.some((subject: any) => {
+                    const subjectText = `${subject.title}`.toLowerCase();
+                    return queryTerms.every(term => subjectText.includes(term));
+                });
+
+                return hasMatchingSubject;
             }
 
-            const key = `${branch}-${semester}`;
-
-            if (!groups[key]) {
-                groups[key] = {
-                    id: key,
-                    branch,
-                    semester,
-                    subjects: [],
-                    totalPrice: 0,
-                    totalOriginalPrice: 0,
-                    subjectCount: 0
-                };
-            }
-
-            groups[key].subjects.push(subject);
-            groups[key].totalPrice += subject.price || 0;
-            groups[key].totalOriginalPrice += subject.originalPrice || subject.price || 0;
-            groups[key].subjectCount++;
-        });
-
-        return Object.values(groups).sort((a, b) => {
+            return true;
+        }).sort((a, b) => {
             // Sort by Branch first
             if (a.branch !== b.branch) {
                 return a.branch.localeCompare(b.branch);
@@ -88,7 +72,7 @@ export function MarketplaceContent({ initialSubjects }: MarketplaceContentProps)
 
             return semA - semB;
         });
-    }, [initialSubjects, selectedBranch, selectedSemester, searchQuery]);
+    }, [initialBundles, selectedBranch, selectedSemester, searchQuery]);
 
     return (
         <div className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-black">
@@ -146,7 +130,7 @@ export function MarketplaceContent({ initialSubjects }: MarketplaceContentProps)
                     </div>
                 </div>
 
-                {semesterBundles.length === 0 ? (
+                {filteredBundles.length === 0 ? (
                     <EmptyState
                         icon={AlertCircle}
                         title="No bundles found"
@@ -160,19 +144,17 @@ export function MarketplaceContent({ initialSubjects }: MarketplaceContentProps)
                     />
                 ) : (
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
-
-                        {semesterBundles.map((bundle) => (
+                        {filteredBundles.map((bundle) => (
                             <Link
                                 key={bundle.id}
                                 href={`/marketplace/semester/${encodeURIComponent(bundle.id)}`}
                                 className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-zinc-300 bg-white transition-all hover:shadow-lg dark:border dark:border-zinc-800 dark:bg-zinc-900"
                             >
-                                <div className={`flex h-32 flex-col items-center justify-center bg-gradient-to-br p-6 text-center ${getColorClass(bundle.branch)}`}>
-                                    <p className="mb-1 text-lg font-medium text-white opacity-90">
+                                <div className={`flex min-h-[9rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center ${getColorClass(bundle.branch)}`}>
+                                    <p className="mb-1 text-sm font-medium text-white opacity-90">
                                         {bundle.semester}
                                     </p>
-                                    <h3 className="text-2xl font-bold text-white line-clamp-2">
+                                    <h3 className="text-xl font-bold text-white line-clamp-3">
                                         {bundle.branch}
                                     </h3>
                                 </div>

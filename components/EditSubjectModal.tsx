@@ -5,6 +5,7 @@ import { X, Loader2, Save } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { SubjectMetadata } from '@/lib/types';
+import { updateBundle } from '@/lib/bundleUtils';
 
 interface EditSubjectModalProps {
     isOpen: boolean;
@@ -60,6 +61,27 @@ export function EditSubjectModal({ isOpen, onClose, subject, onUpdate }: EditSub
             await updateDoc(doc(db, "subjects", subject.id), updates);
             // Also update the lightweight metadata collection
             await updateDoc(doc(db, "subjects_metadata", subject.id), updates);
+
+            await updateDoc(doc(db, "subjects_metadata", subject.id), updates);
+
+            // Sync Bundles (Client-Side Automation)
+            // 1. Sync the NEW bundle (where the subject is now)
+            if (updates.branch && updates.semester) {
+                await updateBundle(updates.branch, updates.semester);
+            } else if (subject.branch && subject.semester) {
+                // If branch/sem didn't change in form, use old ones to update that bundle
+                await updateBundle(subject.branch, subject.semester);
+            }
+
+            // 2. If Branch/Semester CHANGED, we must also sync the OLD bundle to remove this subject from it
+            const oldBranch = subject.branch;
+            const oldSemester = subject.semester;
+            const newBranch = updates.branch || oldBranch;
+            const newSemester = updates.semester || oldSemester;
+
+            if (oldBranch && oldSemester && (oldBranch !== newBranch || oldSemester !== newSemester)) {
+                await updateBundle(oldBranch, oldSemester);
+            }
 
             onUpdate();
             onClose();

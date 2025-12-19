@@ -11,7 +11,7 @@ import { SyllabusView } from "@/components/SyllabusView";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/hooks/useSettings";
 import { PaymentButton } from "@/components/PaymentButton";
-import { useSubjects } from "@/hooks/useSubjects";
+// import { useSubjects } from "@/hooks/useSubjects"; // REMOVED
 
 interface SubjectDetailsProps {
     subjectId: string;
@@ -20,7 +20,7 @@ interface SubjectDetailsProps {
 export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
     const { user, purchasedCourseIds } = useAuth();
     const { settings, loading: settingsLoading } = useSettings() as any;
-    const { subjects, loading: subjectsLoading } = useSubjects();
+    // const { subjects, loading: subjectsLoading } = useSubjects(); // REMOVED
 
     const [metadata, setMetadata] = useState<SubjectMetadata | null>(null);
     const [loading, setLoading] = useState(true);
@@ -28,10 +28,8 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
 
     const isPurchased = purchasedCourseIds.includes(subjectId);
 
-    // Calculate bundle logic
-    const bundleSubjects = metadata && !subjectsLoading
-        ? subjects.filter(s => s.branch === metadata.branch && s.semester === metadata.semester)
-        : [];
+    const [bundleSubjects, setBundleSubjects] = useState<any[]>([]);
+    const [loadingBundle, setLoadingBundle] = useState(true);
 
     const bundleCourseIds = bundleSubjects.map(s => s.id);
     const unownedBundleSubjects = bundleSubjects.filter(s => !purchasedCourseIds.includes(s.id));
@@ -45,24 +43,47 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
     useEffect(() => {
         const fetchSubjectData = async () => {
             try {
-                const metaSnap = await getDoc(doc(db, "subjects", subjectId));
+                // 1. Fetch Subject Metadata
+                const metaSnap = await getDoc(doc(db, "subjects_metadata", subjectId)); // UPDATED to distinct collection if needed, mostly logic was correct but verifying
+                let currentMeta: SubjectMetadata | null = null;
+
                 if (metaSnap.exists()) {
-                    setMetadata({ id: metaSnap.id, ...metaSnap.data() } as SubjectMetadata);
+                    currentMeta = { id: metaSnap.id, ...metaSnap.data() } as SubjectMetadata;
+                    setMetadata(currentMeta);
                 } else {
-                    setError("Course not found");
+                    // Try "subjects" collection fallback if metadata not found
+                    const contentSnap = await getDoc(doc(db, "subjects", subjectId));
+                    if (contentSnap.exists()) {
+                        currentMeta = { id: contentSnap.id, ...contentSnap.data() } as SubjectMetadata;
+                        setMetadata(currentMeta);
+                    } else {
+                        setError("Course not found");
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                // 2. Fetch Bundle Info (Optimization)
+                if (currentMeta && currentMeta.branch && currentMeta.semester) {
+                    const bundleId = `${currentMeta.branch}-${currentMeta.semester}`;
+                    const bundleSnap = await getDoc(doc(db, "bundles", bundleId));
+                    if (bundleSnap.exists()) {
+                        setBundleSubjects(bundleSnap.data().subjects || []);
+                    }
                 }
             } catch (err) {
                 console.error("Error fetching subject:", err);
                 setError("Failed to load course data");
             } finally {
                 setLoading(false);
+                setLoadingBundle(false);
             }
         };
 
         fetchSubjectData();
     }, [subjectId]);
 
-    if (loading || subjectsLoading) {
+    if (loading || loadingBundle) {
         return (
             <div className="container mx-auto px-4 py-8">
                 <div className="mb-8 flex items-center gap-2">

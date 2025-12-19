@@ -4,7 +4,7 @@ import { marked } from 'marked';
 import renderMathInElement from 'katex/dist/contrib/auto-render';
 // @ts-ignore
 import 'katex/dist/katex.min.css';
-import mermaid from 'mermaid';
+// import mermaid from 'mermaid'; // Removed for dynamic import
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -99,8 +99,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
             throwOnError: false
         });
 
-        // Initialize Mermaid
-        mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
 
         // Post-Process: Handle Code Blocks & Mermaid
         const codeBlocks = containerRef.current.querySelectorAll('pre code');
@@ -133,6 +132,9 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
                 // We use an async IIFE to handle the rendering without blocking
                 (async () => {
                     try {
+                        const mermaid = (await import('mermaid')).default;
+                        mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
                         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
                         let content = codeEl.textContent || '';
 

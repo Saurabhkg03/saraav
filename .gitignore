@@ -13,6 +13,17 @@
 # testing
 /coverage
 
+# firebase
+/functions
+/functions/node_modules
+/functions/.next
+/functions/out
+/functions/build
+/functions/lib
+/functions/package-lock.json
+/functions/package.json
+/functions/yarn.lock
+
 # next.js
 /.next/
 /out/

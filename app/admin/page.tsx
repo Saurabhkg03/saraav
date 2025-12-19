@@ -3,26 +3,104 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Upload, Trash2, BookOpen, Flag, MessageSquare, Megaphone } from 'lucide-react';
-import { useSubjects } from '@/hooks/useSubjects';
+// import { useSubjects } from '@/hooks/useSubjects'; // REMOVED
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/hooks/useSettings';
 import { JsonImportModal } from '@/components/JsonImportModal';
 import { EditSubjectModal } from '@/components/EditSubjectModal';
 import { AdminEnrollmentModal } from '@/components/AdminEnrollmentModal';
-import { doc, writeBatch } from 'firebase/firestore';
+import { doc, writeBatch, collection, query, where, orderBy, limit, startAfter, getDocs, QueryConstraint } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { SubjectMetadata } from '@/lib/types';
+import { updateBundle } from '@/lib/bundleUtils';
 
 export default function AdminPage() {
-    const { subjects, loading } = useSubjects();
+    // const { subjects, loading } = useSubjects(); // REMOVED
     const { isAdmin, loading: authLoading } = useAuth();
     const { settings } = useSettings() as any; // Type assertion until types are fixed
     const router = useRouter();
+
+    // Local state for pagination
+    const [subjects, setSubjects] = useState<SubjectMetadata[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<any>(null);
     const [selectedBranch, setSelectedBranch] = useState<string>('All');
     const [selectedSemester, setSelectedSemester] = useState<string>('All');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const fetchSubjects = async (isLoadMore = false) => {
+        if (!isAdmin) return;
+
+        try {
+            setLoading(true);
+            const constraints: QueryConstraint[] = [];
+
+            // Filters
+            if (selectedBranch !== 'All') {
+                constraints.push(where('branch', '==', selectedBranch));
+            }
+            if (selectedSemester !== 'All') {
+                constraints.push(where('semester', '==', selectedSemester));
+            }
+
+            // Search (overrides normal sort/filter if simple prefix search)
+            // Note: Firestore doesn't support searching + complex filters easily without Algolia
+            // We prioritize Title search if present.
+            if (searchQuery) {
+                // If searching, we reset limit and just get matches (assuming < 50 matches or just showing top results)
+                const end = searchQuery.replace(/.$/, c => String.fromCharCode(c.charCodeAt(0) + 1));
+                constraints.push(where('title', '>=', searchQuery));
+                constraints.push(where('title', '<', end));
+                constraints.push(limit(50));
+            } else {
+                // Sort by title (requires index if combined with filters)
+                // Start with creation time or ID if index missing? Title is most intuitive.
+                constraints.push(orderBy('title'));
+                constraints.push(limit(20));
+                if (isLoadMore && lastDoc) {
+                    constraints.push(startAfter(lastDoc));
+                }
+            }
+
+            const q = query(collection(db, "subjects_metadata"), ...constraints);
+            const snapshot = await getDocs(q);
+
+            const fetched: SubjectMetadata[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SubjectMetadata));
+
+            if (isLoadMore) {
+                setSubjects(prev => [...prev, ...fetched]);
+            } else {
+                setSubjects(fetched);
+            }
+
+            setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+            setHasMore(snapshot.docs.length >= 20); // If < 20 returned, no more pages
+
+        } catch (error) {
+            console.error("Error fetching subjects:", error);
+            // Fallback for missing index error
+            // toast.error("Error loading subjects. Check console (ensure indexes exist).");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Initial Load & Filter Change
+    useEffect(() => {
+        if (!authLoading && isAdmin) {
+            // Debounce search slightly or just run
+            // Reset pagination
+            setLastDoc(null);
+            fetchSubjects(false);
+        }
+    }, [isAdmin, authLoading, selectedBranch, selectedSemester, searchQuery]);
+
 
     useEffect(() => {
         if (!authLoading && !isAdmin) {
@@ -56,7 +134,23 @@ export default function AdminPage() {
                 batch.delete(doc(db, "subjects", id));
                 batch.delete(doc(db, "subjects_metadata", id));
                 batch.delete(doc(db, "subject_contents", id)); // Keeping for legacy safety
+                batch.delete(doc(db, "subject_contents", id)); // Keeping for legacy safety
                 await batch.commit();
+
+                // Sync Bundle (Client-Side Automation)
+                // We need the subject's branch/sem to know which bundle to update.
+                // We can find it in 'subjects' state or fetch it before delete.
+                // Since we have 'subjects' in state (via search/pagination), let's try to find it.
+                // If not in state (pagination), we might miss it. Best effort: fetch before delete?
+                // For now, let's use the local state if available.
+                const subjectToDelete = subjects.find(s => s.id === id);
+                if (subjectToDelete) {
+                    await updateBundle(subjectToDelete.branch || "", subjectToDelete.semester || "");
+                } else {
+                    // If we paginated past it or something, we might need to fetch it first. 
+                    // But typically admin deletes what they see.
+                }
+
                 toast.success("Subject deleted successfully");
             } catch (error: any) {
                 toast.error("Failed to delete subject: " + error.message);
@@ -103,15 +197,97 @@ export default function AdminPage() {
         }
     };
 
-    // Derived state for filters
-    const branches = ['All', ...Array.from(new Set(subjects.map(s => s.branch).filter(Boolean)))].sort();
-    const semesters = ['All', ...Array.from(new Set(subjects.map(s => s.semester).filter(Boolean)))].sort();
+    const handleSyncBundles = async () => {
+        if (!confirm("This will read 'subjects_metadata' and aggregate them into the 'bundles' collection. Continue?")) return;
+        try {
+            const { getDocs, collection, setDoc, doc } = await import("firebase/firestore");
+            const snapshot = await getDocs(collection(db, "subjects_metadata"));
 
-    const filteredSubjects = subjects.filter(subject => {
-        const branchMatch = selectedBranch === 'All' || subject.branch === selectedBranch;
-        const semesterMatch = selectedSemester === 'All' || subject.semester === selectedSemester;
-        return branchMatch && semesterMatch;
-    });
+            const groups: Record<string, {
+                id: string;
+                branch: string;
+                semester: string;
+                subjects: any[];
+                totalPrice: number;
+                totalOriginalPrice: number;
+                subjectCount: number;
+            }> = {};
+
+            snapshot.docs.forEach(docSnap => {
+                const subject = { id: docSnap.id, ...docSnap.data() } as any;
+                const branch = subject.branch || "General";
+                const semester = subject.semester || "All Semesters";
+                const key = `${branch}-${semester}`;
+
+                if (!groups[key]) {
+                    groups[key] = {
+                        id: key,
+                        branch,
+                        semester,
+                        subjects: [],
+                        totalPrice: 0,
+                        totalOriginalPrice: 0,
+                        subjectCount: 0
+                    };
+                }
+
+                // Minimal data for the bundle subject list to keep size down
+                groups[key].subjects.push({
+                    id: subject.id,
+                    title: subject.title,
+                    price: subject.price || 0,
+                    originalPrice: subject.originalPrice || 0,
+                    unitCount: subject.unitCount || 0,
+                    questionCount: subject.questionCount || 0,
+                    branch: subject.branch,
+                    semester: subject.semester,
+                    isElective: subject.isElective || false,
+                    electiveCategory: subject.electiveCategory || ""
+                });
+
+                groups[key].totalPrice += subject.price || 0;
+                groups[key].totalOriginalPrice += subject.originalPrice || subject.price || 0;
+                groups[key].subjectCount++;
+            });
+
+            const batch = writeBatch(db);
+            let count = 0;
+
+            Object.values(groups).forEach(bundle => {
+                // Sanitize ID
+                const safeId = bundle.id.replace(/\//g, "_");
+                batch.set(doc(db, "bundles", safeId), bundle);
+                count++;
+            });
+
+            await batch.commit();
+            alert(`Successfully created ${count} bundles.`);
+        } catch (error) {
+            console.error("Bundle Sync error:", error);
+            alert("Bundle Sync failed.");
+        }
+    };
+
+    // Derived state for filters - Hardcoded or fetched?
+    // Using filteredSubjects for compatible rendering, but it's now just 'subjects' (fetched filtered)
+    const filteredSubjects = subjects;
+
+    // Hardcoded lists or fetch unique values efficiently? 
+    // Since we don't load all, we can't derive lists from 'subjects'. 
+    // We'll use static lists or assume the standard ones.
+    const BRANCHES = [
+        "Computer Science & Engineering",
+        "Information Technology",
+        "Electronics & Telecommunication",
+        "Mechanical Engineering",
+        "Electrical Engineering",
+        "Common Electives"
+    ];
+
+    const SEMESTERS = [
+        "Semester 1", "Semester 2", "Semester 3", "Semester 4",
+        "Semester 5", "Semester 6", "Semester 7", "Semester 8"
+    ];
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-8">
@@ -209,6 +385,14 @@ export default function AdminPage() {
                         <Upload className="h-4 w-4" />
                         Sync Metadata
                     </button>
+                    <button
+                        onClick={handleSyncBundles}
+                        className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:border-indigo-900/30 dark:bg-indigo-900/20 dark:text-indigo-400"
+                        title="Aggregate subjects into bundles for Marketplace"
+                    >
+                        <Upload className="h-4 w-4" />
+                        Sync Bundles
+                    </button>
 
                 </div>
             </div>
@@ -218,6 +402,14 @@ export default function AdminPage() {
                     <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">All Subjects ({filteredSubjects.length})</h2>
 
                     <div className="flex flex-wrap gap-2">
+                        {/* Search */}
+                        <input
+                            type="text"
+                            placeholder="Search titles..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 w-full sm:w-48"
+                        />
                         {/* Branch Filter */}
                         <select
                             value={selectedBranch}
@@ -225,8 +417,8 @@ export default function AdminPage() {
                             className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                         >
                             <option value="All">All Branches</option>
-                            {branches.filter(b => b !== 'All').map(branch => (
-                                <option key={branch} value={branch as string}>{branch}</option>
+                            {BRANCHES.map(branch => (
+                                <option key={branch} value={branch}>{branch}</option>
                             ))}
                         </select>
 
@@ -237,8 +429,8 @@ export default function AdminPage() {
                             className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                         >
                             <option value="All">All Semesters</option>
-                            {semesters.filter(s => s !== 'All').map(sem => (
-                                <option key={sem} value={sem as string}>{sem}</option>
+                            {SEMESTERS.map(sem => (
+                                <option key={sem} value={sem}>{sem}</option>
                             ))}
                         </select>
                     </div>
@@ -291,6 +483,18 @@ export default function AdminPage() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {hasMore && !searchQuery && filteredSubjects.length > 0 && (
+                    <div className="p-4 flex justify-center border-t border-zinc-200 dark:border-zinc-800">
+                        <button
+                            onClick={() => fetchSubjects(true)}
+                            disabled={loading}
+                            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
+                        >
+                            {loading ? 'Loading...' : 'Load More'}
+                        </button>
                     </div>
                 )}
             </div>

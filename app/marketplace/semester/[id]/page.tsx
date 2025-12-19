@@ -1,35 +1,62 @@
 "use client";
 
-import { useSubjects } from "@/hooks/useSubjects";
+// import { useSubjects } from "@/hooks/useSubjects"; // REMOVED
 import { useAuth } from "@/context/AuthContext";
 import { PaymentButton } from "@/components/PaymentButton";
 import { SubjectCard } from "@/components/SubjectCard";
 import { AlertCircle, ArrowLeft, BookOpen, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import { useSettings } from "@/hooks/useSettings";
+
+import { SubjectMetadata } from "@/lib/types";
+
+interface BundleData {
+    branch: string;
+    semester: string;
+    subjects: SubjectMetadata[];
+}
 
 export default function SemesterBundlePage() {
     const params = useParams();
     const router = useRouter();
-    const { subjects, loading } = useSubjects();
+    // const { subjects, loading } = useSubjects(); // REMOVED
+    const [bundleData, setBundleData] = useState<BundleData | null>(null);
+    const [loading, setLoading] = useState(true);
     const { user, purchasedCourseIds } = useAuth();
     const { settings } = useSettings() as any; // distinct hook call, temporary cast if needed based on previous context
     const [viewingCategory, setViewingCategory] = useState<string | null>(null);
 
     // Decode ID: "Branch-Semester"
     const bundleId = decodeURIComponent(params.id as string);
-    const [branch, semester] = bundleId.split('-');
+    // const [branch, semester] = bundleId.split('-'); // REMOVED: splitting might be unreliable if id is just the key
+
+    useEffect(() => {
+        const fetchBundle = async () => {
+            try {
+                const { getDoc, doc, getFirestore } = await import("firebase/firestore");
+                const db = getFirestore();
+                const snap = await getDoc(doc(db, "bundles", bundleId));
+                if (snap.exists()) {
+                    setBundleData(snap.data() as BundleData);
+                }
+            } catch (e) {
+                console.error("Failed to fetch bundle", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchBundle();
+    }, [bundleId]);
 
     const bundleSubjects = useMemo(() => {
-        if (!branch || !semester) return [];
-        return subjects.filter(s =>
-            (s.branch === branch || (!s.branch && branch === "General")) &&
-            (s.semester === semester || (!s.semester && semester === "All Semesters"))
-        );
-    }, [subjects, branch, semester]);
+        return bundleData?.subjects || [];
+    }, [bundleData]);
+
+    const branch = bundleData?.branch;
+    const semester = bundleData?.semester;
 
     const totalPrice = bundleSubjects.reduce((sum, s) => sum + (s.price || 0), 0);
     const totalOriginalPrice = bundleSubjects.reduce((sum, s) => sum + (s.originalPrice || s.price || 0), 0);

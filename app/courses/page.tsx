@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { SubjectMetadata } from "@/lib/types";
 import { useSubjects } from '@/hooks/useSubjects';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpen, AlertCircle, PlayCircle, ArrowLeft, Search } from 'lucide-react';
@@ -10,7 +11,9 @@ import Link from 'next/link';
 import { EmptyState } from '@/components/EmptyState';
 
 export default function MyCoursesPage() {
-    const { subjects, loading } = useSubjects();
+    // const { subjects, loading } = useSubjects(); // REMOVED: Fetching all subjects is inefficient
+    const [subjects, setSubjects] = useState<SubjectMetadata[]>([]);
+    const [loading, setLoading] = useState(true);
     const { purchasedCourseIds, user, loading: authLoading, progress, purchases } = useAuth();
 
     // Track interactions
@@ -20,9 +23,46 @@ export default function MyCoursesPage() {
     // Track which folder is open: { semester: "Semester 3", category: "Elective I" }
     const [expandedFolder, setExpandedFolder] = useState<{ semester: string; category: string } | null>(null);
 
+    // Fetch only purchased courses
+    useEffect(() => {
+        if (authLoading) return;
+
+        const fetchMyCourses = async () => {
+            // If no purchases, stop early
+            if (!purchasedCourseIds || purchasedCourseIds.length === 0) {
+                setSubjects([]);
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const { doc, getDoc, getFirestore } = await import("firebase/firestore");
+                const db = getFirestore();
+
+                // Fetch in parallel (reading subjects_metadata for details)
+                // We use getDoc for each ID to ensure we get exactly what we need
+                // Optimization: If list is huge (>20), we should batch, but for now Promise.all is fine for user's course list
+                const promises = purchasedCourseIds.map(id => getDoc(doc(db, "subjects_metadata", id)));
+                const snapshots = await Promise.all(promises);
+
+                const fetchedSubjects = snapshots
+                    .filter(snap => snap.exists())
+                    .map(snap => ({ id: snap.id, ...snap.data() })) as unknown as SubjectMetadata[];
+
+                setSubjects(fetchedSubjects);
+            } catch (err) {
+                console.error("Error fetching my courses:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMyCourses();
+    }, [purchasedCourseIds, authLoading]);
+
     const myCourses = useMemo(() => {
-        return subjects.filter(subject => purchasedCourseIds.includes(subject.id));
-    }, [subjects, purchasedCourseIds]);
+        return subjects; // Subjects are already filtered by fetching strategy
+    }, [subjects]);
 
     // Derived State: Sorted Semesters by Latest Purchase
     const sortedSemesters = useMemo(() => {
@@ -298,13 +338,13 @@ export default function MyCoursesPage() {
                                 className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-zinc-300 bg-white transition-all hover:shadow-lg dark:border dark:border-zinc-800 dark:bg-zinc-900"
                             >
                                 <div className={cn(
-                                    "flex h-32 flex-col items-center justify-center bg-gradient-to-br p-6 text-center",
+                                    "flex min-h-[8rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center",
                                     getColorClass(branch)
                                 )}>
-                                    <p className="mb-1 text-lg font-medium text-white opacity-90">
+                                    <p className="mb-1 text-sm font-medium text-white opacity-90">
                                         {semester}
                                     </p>
-                                    <h3 className="text-2xl font-bold text-white line-clamp-2">
+                                    <h3 className="text-xl font-bold text-white line-clamp-3">
                                         {branch}
                                     </h3>
                                 </div>

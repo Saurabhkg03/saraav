@@ -3,6 +3,7 @@ import { X, Upload, AlertCircle, FileJson } from 'lucide-react';
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Subject, SubjectMetadata } from '@/lib/types';
+import { updateBundle } from '@/lib/bundleUtils';
 
 interface JsonImportModalProps {
     isOpen: boolean;
@@ -144,6 +145,10 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
             batch.delete(legacyRef);
 
             await batch.commit();
+
+            // Sync Bundles (Client-Side Automation)
+            // We just added a subject to a specific Branch/Semester. Sync that bundle.
+            await updateBundle(resolvedBranch, resolvedSemester);
 
             onClose();
             // Force reload or notify parent

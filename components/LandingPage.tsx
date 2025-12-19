@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { ArrowRight, BookOpen, CheckCircle2, Zap, Star, GraduationCap, Users, TrendingUp, Sparkles, ChevronDown, ChevronUp, MousePointer, Filter, Check } from "lucide-react";
-import { useSubjects } from "@/hooks/useSubjects";
+// import { useSubjects } from "@/hooks/useSubjects"; // REMOVED
 import { cn, getColorClass, getInitials } from "@/lib/utils";
 import { SaleBanner } from "@/components/SaleBanner";
 
@@ -24,37 +24,41 @@ interface Bundle {
 
 export function LandingPage({ preloadedSubjects }: LandingPageProps) {
     // Only use the hook if preloadedSubjects is not provided
-    const hookData = useSubjects();
-    const subjects = preloadedSubjects || hookData.subjects;
+    // const hookData = useSubjects(); // REMOVED: Inefficient
+    // const subjects = preloadedSubjects || hookData.subjects;
 
-    // Group subjects into bundles
+    // START OPTIMIZATION: Use bundles collection
+    const [bundles, setBundles] = useState<Bundle[]>([]);
+
+    useEffect(() => {
+        const fetchBundles = async () => {
+            // If preloaded subjects are provided (e.g. from server component), use them to build bundles? 
+            // Actually, LandingPage usually runs on client.
+            // We will fetch bundles directly.
+            try {
+                const { getDocs, collection, getFirestore } = await import("firebase/firestore");
+                const db = getFirestore();
+                const snap = await getDocs(collection(db, "bundles"));
+                const fetchedBundles = snap.docs.map(d => d.data() as Bundle);
+                setBundles(fetchedBundles);
+            } catch (e) {
+                console.error("Failed to load bundles", e);
+            }
+        };
+        fetchBundles();
+    }, []);
+
+    const allBundlesList = bundles;
+
+
+    // Group subjects into bundles -> REMOVED (Bundles are pre-aggregated)
+    /* 
     const allBundlesMap = subjects.reduce((acc: Record<string, Bundle>, subject) => {
-        const branch = (subject.branch || "General").trim();
-        const semester = subject.semester || "All Semesters";
-        const key = `${branch}-${semester}`;
-
-        if (!acc[key]) {
-            acc[key] = {
-                id: key,
-                branch,
-                semester,
-                subjects: [],
-                totalPrice: 0,
-                totalOriginalPrice: 0,
-                subjectCount: 0,
-                title: `${branch} - ${semester}` // Create a title for the bundle
-            };
-        }
-
-        acc[key].subjects.push(subject);
-        acc[key].totalPrice += subject.price || 0;
-        acc[key].totalOriginalPrice += subject.originalPrice || subject.price || 0;
-        acc[key].subjectCount++;
-
-        return acc;
+        // ... code removed ...
     }, {} as Record<string, Bundle>);
 
     const allBundlesList = Object.values(allBundlesMap);
+    */
 
     // Select 3 bundles from different branches to showcase variety
     const featuredBundles: Bundle[] = [];
@@ -306,10 +310,10 @@ export function LandingPage({ preloadedSubjects }: LandingPageProps) {
                                         "flex h-full w-full flex-col items-center justify-center bg-gradient-to-br text-white transition-transform duration-500 group-hover:scale-110 p-4 text-center",
                                         getColorClass(bundle.branch) // Use branch for color
                                     )}>
-                                        <span className="text-lg font-medium uppercase tracking-wider opacity-80 mb-1 line-clamp-1 w-full px-2">
+                                        <span className="text-base font-medium uppercase tracking-wider opacity-80 mb-1 line-clamp-1 w-full px-2">
                                             {bundle.semester}
                                         </span>
-                                        <span className="text-3xl font-bold line-clamp-2">
+                                        <span className="text-2xl font-bold line-clamp-3">
                                             {bundle.branch}
                                         </span>
                                     </div>
