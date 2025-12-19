@@ -12,7 +12,7 @@ import { useEffect, useState, useMemo } from 'react';
 
 export default function Dashboard() {
   const { myCourses, branchSubjects, loading: subjectsLoading } = useDashboardData();
-  const { user, loading: authLoading, branch: userBranch, year: userYear, progress, purchases } = useAuth();
+  const { user, loading: authLoading, branch: userBranch, year: userYear, progress, purchases, purchasedCourseIds } = useAuth();
   const [skeletonType, setSkeletonType] = useState<'dashboard' | 'landing' | null>(null);
 
   // 1. Group BRANCH-SPECIFIC subjects into bundles
@@ -348,14 +348,22 @@ export default function Dashboard() {
                       <span>{bundle.subjectCount} Subjects</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {bundle.totalOriginalPrice > bundle.totalPrice && (
-                        <span className="text-xs text-zinc-400 line-through dark:text-zinc-500">
-                          ₹{bundle.totalOriginalPrice}
-                        </span>
+                      {bundle.subjects.every((s: any) => purchasedCourseIds?.includes(s.id)) ? (
+                        <div className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          Owned
+                        </div>
+                      ) : (
+                        <>
+                          {bundle.totalOriginalPrice > bundle.totalPrice && (
+                            <span className="text-xs text-zinc-400 line-through dark:text-zinc-500">
+                              ₹{bundle.totalOriginalPrice}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                            ₹{bundle.totalPrice}
+                          </div>
+                        </>
                       )}
-                      <div className="flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/20 dark:text-green-400">
-                        ₹{bundle.totalPrice}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -408,14 +416,22 @@ export default function Dashboard() {
                     <span>{bundle.subjectCount} Subjects</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {bundle.totalOriginalPrice > bundle.totalPrice && (
-                      <span className="text-xs text-zinc-400 line-through dark:text-zinc-500">
-                        ₹{bundle.totalOriginalPrice}
-                      </span>
+                    {bundle.subjects.every((s: any) => purchasedCourseIds?.includes(s.id)) ? (
+                      <div className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        Owned
+                      </div>
+                    ) : (
+                      <>
+                        {bundle.totalOriginalPrice > bundle.totalPrice && (
+                          <span className="text-xs text-zinc-400 line-through dark:text-zinc-500">
+                            ₹{bundle.totalOriginalPrice}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-sm font-bold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                          ₹{bundle.totalPrice}
+                        </div>
+                      </>
                     )}
-                    <div className="flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-sm font-bold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                      ₹{bundle.totalPrice}
-                    </div>
                   </div>
                 </div>
               </div>

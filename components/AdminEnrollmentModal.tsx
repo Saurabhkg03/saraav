@@ -1,37 +1,78 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Save, CheckSquare, Square } from "lucide-react";
-import { Subject } from "@/lib/types";
-import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
+import { X, Save, CheckSquare, Loader2 } from "lucide-react";
+import { doc, updateDoc, arrayUnion, arrayRemove, getDocs, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 interface AdminEnrollmentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    subjects: any[];
+    subjects: any[]; // Kept for interface compatibility but ignored
 }
 
-export function AdminEnrollmentModal({ isOpen, onClose, subjects }: AdminEnrollmentModalProps) {
+interface Bundle {
+    id: string;
+    branch: string;
+    semester: string;
+    subjects: { id: string; title: string }[];
+}
+
+export function AdminEnrollmentModal({ isOpen, onClose }: AdminEnrollmentModalProps) {
     const { user, purchasedCourseIds } = useAuth();
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    // selectedSubjectIds tracks the IDs of all subjects the user "should" have after saving
+    const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+    const [bundles, setBundles] = useState<Bundle[]>([]);
+    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    // Fetch Bundles on mount/open
     useEffect(() => {
         if (isOpen) {
-            setSelectedIds(purchasedCourseIds);
+            const fetchBundles = async () => {
+                setLoading(true);
+                try {
+                    const snap = await getDocs(collection(db, "bundles"));
+                    const fetched = snap.docs.map(d => d.data() as Bundle);
+                    // Sort bundles logically: Branch then Semester
+                    fetched.sort((a, b) => {
+                        if (a.branch !== b.branch) return a.branch.localeCompare(b.branch);
+                        return a.semester.localeCompare(b.semester);
+                    });
+                    setBundles(fetched);
+                } catch (e) {
+                    console.error("Failed to fetch bundles", e);
+                    toast.error("Failed to load bundles");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            fetchBundles();
+            // Initialize local selection state with current user holdings
+            setSelectedSubjectIds(purchasedCourseIds || []);
         }
     }, [isOpen, purchasedCourseIds]);
 
     if (!isOpen || !user) return null;
 
-    const toggleSelection = (id: string) => {
-        setSelectedIds(prev =>
-            prev.includes(id)
-                ? prev.filter(pid => pid !== id)
-                : [...prev, id]
-        );
+    // Toggle Bundle: Select All or Deselect All subjects in the bundle
+    const toggleBundle = (bundle: Bundle) => {
+        const bundleSubjectIds = bundle.subjects.map(s => s.id);
+
+        // Check if fully selected
+        const isFullySelected = bundleSubjectIds.every(id => selectedSubjectIds.includes(id));
+
+        if (isFullySelected) {
+            // Remove all
+            setSelectedSubjectIds(prev => prev.filter(id => !bundleSubjectIds.includes(id)));
+        } else {
+            // Add all (ensure no duplicates)
+            const newIds = new Set([...selectedSubjectIds, ...bundleSubjectIds]);
+            setSelectedSubjectIds(Array.from(newIds));
+        }
     };
 
     const handleSave = async () => {
@@ -39,18 +80,13 @@ export function AdminEnrollmentModal({ isOpen, onClose, subjects }: AdminEnrollm
         try {
             const userRef = doc(db, "users", user.uid);
 
-            // Determine what to add and what to remove
-            const toAdd = selectedIds.filter(id => !purchasedCourseIds.includes(id));
-            const toRemove = purchasedCourseIds.filter(id => !selectedIds.includes(id));
+            // Determine diff
+            const toAdd = selectedSubjectIds.filter(id => !purchasedCourseIds.includes(id));
+            const toRemove = purchasedCourseIds.filter(id => !selectedSubjectIds.includes(id));
 
-            // We can't do both arrayUnion and arrayRemove in a single update call for the same field usually,
-            // or at least it's safer to do them sequentially or just set the array if we want to be exact.
-            // However, Firestore doesn't support "set array" easily without overwriting other fields or race conditions.
-            // Best approach: 
-            // 1. If we want to exact match: read, modify, write (transaction).
-            // 2. Or just two updates.
-
-            // Let's do two updates if needed.
+            // Perform updates
+            // Use Promise.all for speed, though Firestore limits write rate to single doc. 
+            // Sequential is safer for simple race conditions on the same field.
             if (toAdd.length > 0) {
                 await updateDoc(userRef, {
                     purchasedCourseIds: arrayUnion(...toAdd)
@@ -63,10 +99,11 @@ export function AdminEnrollmentModal({ isOpen, onClose, subjects }: AdminEnrollm
                 });
             }
 
-            window.location.reload(); // Reload to reflect changes in AuthContext
+            toast.success("Enrollments updated successfully");
+            window.location.reload(); // Hard reload to force context refresh and ensure consistency
         } catch (error) {
             console.error("Error updating enrollments:", error);
-            alert("Failed to update enrollments");
+            toast.error("Failed to update enrollments");
             setSaving(false);
         }
     };
@@ -77,10 +114,10 @@ export function AdminEnrollmentModal({ isOpen, onClose, subjects }: AdminEnrollm
                 <div className="mb-6 flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                            Manage My Enrollments
+                            Manage Bundles
                         </h2>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                            Select courses to enroll in for testing purposes.
+                            Enroll in complete semester bundles for testing.
                         </p>
                     </div>
                     <button
@@ -92,33 +129,47 @@ export function AdminEnrollmentModal({ isOpen, onClose, subjects }: AdminEnrollm
                 </div>
 
                 <div className="mb-6 max-h-[60vh] overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
-                    <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                        {subjects.map((subject) => {
-                            const isSelected = selectedIds.includes(subject.id);
-                            return (
-                                <div
-                                    key={subject.id}
-                                    onClick={() => toggleSelection(subject.id)}
-                                    className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                                >
-                                    <div>
-                                        <h3 className="font-medium text-zinc-900 dark:text-zinc-100">
-                                            {subject.title}
-                                        </h3>
-                                        <p className="text-xs text-zinc-500">
-                                            {subject.branch || "General"} • {subject.semester || "All Semesters"}
-                                        </p>
-                                    </div>
-                                    <div className={`flex h-6 w-6 items-center justify-center rounded-md border transition-colors ${isSelected
-                                        ? "border-indigo-600 bg-indigo-600 text-white"
-                                        : "border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-950"
-                                        }`}>
-                                        {isSelected && <CheckSquare className="h-4 w-4" />}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    {loading ? (
+                        <div className="flex h-32 items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                            {bundles.length === 0 ? (
+                                <div className="p-8 text-center text-zinc-500">No bundles found. Sync bundles first.</div>
+                            ) : (
+                                bundles.map((bundle) => {
+                                    // A bundle is Checked if ALL its subjects are in selectedSubjectIds
+                                    const allSubjects = bundle.subjects.map(s => s.id);
+                                    const isSelected = allSubjects.length > 0 && allSubjects.every(id => selectedSubjectIds.includes(id));
+                                    // Partial check could be UI enhancement, but KISS: fully owned or not.
+
+                                    return (
+                                        <div
+                                            key={bundle.id}
+                                            onClick={() => toggleBundle(bundle)}
+                                            className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                                        >
+                                            <div>
+                                                <h3 className="font-medium text-zinc-900 dark:text-zinc-100">
+                                                    {bundle.branch}
+                                                </h3>
+                                                <p className="text-xs text-zinc-500">
+                                                    {bundle.semester} • {bundle.subjects.length} Subjects
+                                                </p>
+                                            </div>
+                                            <div className={`flex h-6 w-6 items-center justify-center rounded-md border transition-colors ${isSelected
+                                                ? "border-indigo-600 bg-indigo-600 text-white"
+                                                : "border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-950"
+                                                }`}>
+                                                {isSelected && <CheckSquare className="h-4 w-4" />}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex justify-end gap-3">

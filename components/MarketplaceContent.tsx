@@ -13,7 +13,7 @@ interface MarketplaceContentProps {
 }
 
 export function MarketplaceContent({ initialBundles }: { initialBundles: any[] }) {
-    const { branch: userBranch, year: userYear } = useAuth();
+    const { branch: userBranch, year: userYear, purchasedCourseIds } = useAuth();
     const [selectedBranch, setSelectedBranch] = useState("");
     const [selectedSemester, setSelectedSemester] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
@@ -174,14 +174,22 @@ export function MarketplaceContent({ initialBundles }: { initialBundles: any[] }
                                             <span>{bundle.subjectCount} Subjects</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {bundle.totalOriginalPrice > bundle.totalPrice && (
-                                                <span className="text-xs text-zinc-400 line-through dark:text-zinc-500">
-                                                    ₹{bundle.totalOriginalPrice}
-                                                </span>
+                                            {bundle.subjects.every((s: any) => purchasedCourseIds?.includes(s.id)) ? (
+                                                <div className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                    Owned
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {bundle.totalOriginalPrice > bundle.totalPrice && (
+                                                        <span className="text-xs text-zinc-400 line-through dark:text-zinc-500">
+                                                            ₹{bundle.totalOriginalPrice}
+                                                        </span>
+                                                    )}
+                                                    <div className="flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                                                        ₹{bundle.totalPrice}
+                                                    </div>
+                                                </>
                                             )}
-                                            <div className="flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/20 dark:text-green-400">
-                                                ₹{bundle.totalPrice}
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
