@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Upload, Trash2, BookOpen, Flag, MessageSquare, Megaphone } from 'lucide-react';
+import { Plus, Upload, Trash2, BookOpen, Flag, MessageSquare, Megaphone, Download } from 'lucide-react';
 // import { useSubjects } from '@/hooks/useSubjects'; // REMOVED
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -10,9 +10,9 @@ import { useSettings } from '@/hooks/useSettings';
 import { JsonImportModal } from '@/components/JsonImportModal';
 import { EditSubjectModal } from '@/components/EditSubjectModal';
 import { AdminEnrollmentModal } from '@/components/AdminEnrollmentModal';
-import { doc, writeBatch, collection, query, where, orderBy, limit, startAfter, getDocs, QueryConstraint } from 'firebase/firestore';
+import { doc, writeBatch, collection, query, where, orderBy, limit, startAfter, getDocs, QueryConstraint, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { SubjectMetadata } from '@/lib/types';
+import { SubjectMetadata, Subject, Unit } from '@/lib/types';
 import { updateBundle } from '@/lib/bundleUtils';
 
 export default function AdminPage() {
@@ -26,6 +26,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true);
     const [lastDoc, setLastDoc] = useState<any>(null);
     const [hasMore, setHasMore] = useState(true);
+    const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
@@ -118,6 +119,73 @@ export default function AdminPage() {
         } catch (error) {
             console.error('Error toggling payment:', error);
             alert('Failed to update settings');
+        }
+    };
+
+    const handleDownloadJson = async (subject: SubjectMetadata) => {
+        try {
+            setDownloadingId(subject.id);
+            toast.info(`Preparing download for ${subject.title}...`);
+
+            // 1. Get base metadata is already in 'subject', but let's be safe and use what we have or fetch if needed.
+            // Actually, we need to construct the full 'Subject' object which matches the import format.
+
+            // 2. Fetch Units
+            const unitsSnapshot = await getDocs(collection(db, "subjects", subject.id, "units"));
+            const unitsData = await Promise.all(unitsSnapshot.docs.map(async (unitDoc) => {
+                const unitData = unitDoc.data() as Unit;
+
+                // 3. For each unit, check questions for solutions
+                const questionsWithSolutions = await Promise.all(unitData.questions.map(async (q) => {
+                    if (q.hasSolution) {
+                        try {
+                            const solSnap = await getDoc(doc(db, "subjects", subject.id, "solutions", q.id));
+                            if (solSnap.exists()) {
+                                return { ...q, solution: solSnap.data().text };
+                            }
+                        } catch (e) {
+                            console.warn(`Failed to fetch solution for ${q.id}`, e);
+                        }
+                    }
+                    return q;
+                }));
+
+                return {
+                    ...unitData,
+                    id: unitDoc.id,
+                    questions: questionsWithSolutions
+                };
+            }));
+
+            // 4. Construct Full Subject
+            const fullSubject: Subject = {
+                id: subject.id,
+                title: subject.title,
+                branch: subject.branch,
+                semester: subject.semester,
+                year: subject.year,
+                price: subject.price,
+                originalPrice: subject.originalPrice,
+                isElective: subject.isElective,
+                electiveCategory: subject.electiveCategory,
+                units: unitsData
+            };
+
+            // 5. Trigger Download
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullSubject, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", `${subject.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_complete.json`);
+            document.body.appendChild(downloadAnchorNode); // required for firefox
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+
+            toast.success("Download started!");
+        } catch (error) {
+            console.error("Download failed:", error);
+            toast.error("Failed to download subject JSON");
+        } finally {
+            setDownloadingId(null);
         }
     };
 
@@ -472,6 +540,14 @@ export default function AdminPage() {
                                         className="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
                                     >
                                         Edit
+                                    </button>
+                                    <button
+                                        onClick={() => handleDownloadJson(subject)}
+                                        disabled={downloadingId === subject.id}
+                                        className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 disabled:opacity-50"
+                                        title="Download JSON"
+                                    >
+                                        <Download className={`h-4 w-4 ${downloadingId === subject.id ? 'animate-pulse' : ''}`} />
                                     </button>
                                     <button
                                         onClick={() => handleDelete(subject.id)}
