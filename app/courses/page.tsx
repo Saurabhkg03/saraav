@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, Suspense } from "react";
 import { SubjectMetadata } from "@/lib/types";
 import { useSubjects } from '@/hooks/useSubjects';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { EmptyState } from '@/components/EmptyState';
 
-export default function MyCoursesPage() {
+function MyCoursesContent() {
     // const { subjects, loading } = useSubjects(); // REMOVED: Fetching all subjects is inefficient
     const [subjects, setSubjects] = useState<SubjectMetadata[]>([]);
     const [loading, setLoading] = useState(true);
@@ -456,5 +456,12 @@ export default function MyCoursesPage() {
             )}
         </div>
     );
+}
 
+export default function MyCoursesPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-zinc-50 dark:bg-black" />}>
+            <MyCoursesContent />
+        </Suspense>
+    );
 }
