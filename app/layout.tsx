@@ -69,6 +69,10 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+import { WelcomeModalContainer } from "@/components/WelcomeModalContainer";
+
+// ... existing imports
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -89,6 +93,7 @@ export default function RootLayout({
               <Analytics />
               <SpeedInsights />
               <FeedbackReminder />
+              <WelcomeModalContainer />
               <div className="flex min-h-screen flex-col bg-white dark:bg-black">
                 <Navbar />
                 <LayoutWrapper>

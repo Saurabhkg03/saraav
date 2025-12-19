@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Pencil, Trash2, Megaphone, Loader2, Save, X } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Megaphone, Loader2, Save, X, Settings } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
+import { WelcomeAnnouncementEditor } from '@/components/WelcomeAnnouncementEditor';
 
 interface Announcement {
     id: string;
@@ -18,6 +19,9 @@ interface Announcement {
 export default function AnnouncementsPage() {
     const { isAdmin, loading: authLoading } = useAuth();
     const router = useRouter();
+    const [activeTab, setActiveTab] = useState<'general' | 'welcome'>('general');
+
+    // General Announcements State
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,10 +53,10 @@ export default function AnnouncementsPage() {
     };
 
     useEffect(() => {
-        if (isAdmin) {
+        if (isAdmin && activeTab === 'general') {
             fetchAnnouncements();
         }
-    }, [isAdmin]);
+    }, [isAdmin, activeTab]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -118,7 +122,7 @@ export default function AnnouncementsPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <div className="mb-8 flex items-center justify-between">
+            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => router.back()}
@@ -134,55 +138,87 @@ export default function AnnouncementsPage() {
                         <p className="text-sm text-zinc-500 dark:text-zinc-400">Manage system-wide notifications for users</p>
                     </div>
                 </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors shadow-sm"
-                >
-                    <Plus className="h-4 w-4" />
-                    New Announcement
-                </button>
+
+                {/* Tabs */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-xl">
+                    <button
+                        onClick={() => setActiveTab('general')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'general'
+                                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700'
+                            }`}
+                    >
+                        Notifications
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('welcome')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'welcome'
+                                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700'
+                            }`}
+                    >
+                        <Settings className="h-4 w-4" />
+                        Welcome Modal
+                    </button>
+                </div>
             </div>
 
-            {loading ? (
-                <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-zinc-400" /></div>
-            ) : announcements.length === 0 ? (
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
-                    <Megaphone className="mx-auto h-12 w-12 text-zinc-300 dark:text-zinc-700 mb-4" />
-                    <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">No announcements yet</h3>
-                    <p className="text-zinc-500 dark:text-zinc-400 mt-1">Create your first announcement to notify users.</p>
-                </div>
-            ) : (
-                <div className="grid gap-4">
-                    {announcements.map((announcement) => (
-                        <div key={announcement.id} className="group relative rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                    <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg mb-2">{announcement.title}</h3>
-                                    <p className="text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap">{announcement.content}</p>
-                                    <p className="mt-4 text-xs text-zinc-400">
-                                        Posted: {announcement.createdAt?.toDate().toLocaleString()}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={() => handleEdit(announcement)}
-                                        className="rounded-lg p-2 text-zinc-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors"
-                                        title="Edit"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(announcement.id)}
-                                        className="rounded-lg p-2 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            </div>
+            {activeTab === 'general' ? (
+                <>
+                    <div className="flex justify-end mb-6">
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                        >
+                            <Plus className="h-4 w-4" />
+                            New Announcement
+                        </button>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-zinc-400" /></div>
+                    ) : announcements.length === 0 ? (
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
+                            <Megaphone className="mx-auto h-12 w-12 text-zinc-300 dark:text-zinc-700 mb-4" />
+                            <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">No announcements yet</h3>
+                            <p className="text-zinc-500 dark:text-zinc-400 mt-1">Create your first announcement to notify users.</p>
                         </div>
-                    ))}
-                </div>
+                    ) : (
+                        <div className="grid gap-4">
+                            {announcements.map((announcement) => (
+                                <div key={announcement.id} className="group relative rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg mb-2">{announcement.title}</h3>
+                                            <p className="text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap">{announcement.content}</p>
+                                            <p className="mt-4 text-xs text-zinc-400">
+                                                Posted: {announcement.createdAt?.toDate().toLocaleString()}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleEdit(announcement)}
+                                                className="rounded-lg p-2 text-zinc-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(announcement.id)}
+                                                className="rounded-lg p-2 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            ) : (
+                <WelcomeAnnouncementEditor />
             )}
 
             {/* Create/Edit Modal */}

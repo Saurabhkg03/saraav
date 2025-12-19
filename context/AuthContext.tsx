@@ -20,11 +20,13 @@ interface AuthContextType {
     purchases?: UserProfile['purchases'];
     branch?: string;
     year?: string;
+    hasSeenWelcomeModal?: boolean;
     progress: UserProfile['progress'];
     login: () => Promise<void>;
     logout: () => Promise<void>;
     purchaseCourse: (courseId: string) => Promise<void>;
     updateProfile: (data: { branch?: string; year?: string }) => Promise<void>;
+    markWelcomeModalAsSeen: () => Promise<void>;
     checkAccess: (courseId: string) => boolean;
     refreshUser: () => Promise<void>;
 }
@@ -39,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
     logout: async () => { },
     purchaseCourse: async () => { },
     updateProfile: async () => { },
+    markWelcomeModalAsSeen: async () => { },
     checkAccess: () => false,
     refreshUser: async () => { },
 });
@@ -51,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [purchases, setPurchases] = useState<UserProfile['purchases']>({});
     const [branch, setBranch] = useState<string>();
     const [year, setYear] = useState<string>();
+    const [hasSeenWelcomeModal, setHasSeenWelcomeModal] = useState<boolean>(false);
     const [progress, setProgress] = useState<UserProfile['progress']>({});
 
     const refreshUser = async () => {
@@ -67,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setPurchases(data.purchases || {});
                 setBranch(data.branch);
                 setYear(data.year);
+                setHasSeenWelcomeModal(data.hasSeenWelcomeModal || false);
             }
         } catch (error) {
             console.error("Error refreshing user data:", error);
@@ -141,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setPurchases(data.purchases || {});
                         setBranch(data.branch);
                         setYear(data.year);
+                        setHasSeenWelcomeModal(data.hasSeenWelcomeModal || false);
                     } else {
                         // Create user doc if it doesn't exist
                         await setDoc(userDocRef, {
@@ -149,9 +155,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             photoURL: user.photoURL,
                             createdAt: new Date().toISOString(),
                             purchasedCourseIds: [],
+                            hasSeenWelcomeModal: false
                         });
                         setPurchasedCourseIds([]);
                         setPurchases({});
+                        setHasSeenWelcomeModal(false);
                     }
 
                     // Listen to progress subcollection
@@ -178,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setPurchases({});
                 setBranch(undefined);
                 setYear(undefined);
+                setHasSeenWelcomeModal(false);
                 setProgress({});
             }
             setLoading(false);
@@ -265,8 +274,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const markWelcomeModalAsSeen = async () => {
+        if (!user) return;
+        try {
+            const userDocRef = doc(db, "users", user.uid);
+            await updateDoc(userDocRef, { hasSeenWelcomeModal: true });
+            setHasSeenWelcomeModal(true);
+        } catch (error) {
+            console.error("Error marking welcome modal as seen:", error);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, isAdmin, purchasedCourseIds, branch, year, progress, login, logout, purchaseCourse, updateProfile, checkAccess, purchases, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, isAdmin, purchasedCourseIds, branch, year, hasSeenWelcomeModal, progress, login, logout, purchaseCourse, updateProfile, markWelcomeModalAsSeen, checkAccess, purchases, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

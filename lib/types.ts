@@ -88,6 +88,7 @@ export interface UserProfile {
         expiryDate: number;   // Timestamp
         durationMonths: number;
     }>;
+    hasSeenWelcomeModal?: boolean;
 }
 
 export type ReportReason = 'wrong_answer' | 'missing_content' | 'typo' | 'other';
