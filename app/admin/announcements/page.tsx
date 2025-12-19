@@ -144,8 +144,8 @@ export default function AnnouncementsPage() {
                     <button
                         onClick={() => setActiveTab('general')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'general'
-                                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700'
+                            ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700'
                             }`}
                     >
                         Notifications
@@ -153,8 +153,8 @@ export default function AnnouncementsPage() {
                     <button
                         onClick={() => setActiveTab('welcome')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'welcome'
-                                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700'
+                            ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700'
                             }`}
                     >
                         <Settings className="h-4 w-4" />
