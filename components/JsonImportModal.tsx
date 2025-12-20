@@ -60,8 +60,9 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
                 setJsonInput(content);
 
                 // Pre-fill fields if present in JSON
-                if (parsed.branch) setBranch(parsed.branch);
-                if (parsed.semester) setSemester(parsed.semester);
+                // REMOVED: User wants to manually select branch/semester to avoid errors from JSON
+                // if (parsed.branch) setBranch(parsed.branch);
+                // if (parsed.semester) setSemester(parsed.semester);
                 if (parsed.price !== undefined) setPrice(parsed.price.toString());
                 if (parsed.originalPrice !== undefined) setOriginalPrice(parsed.originalPrice.toString());
                 if (parsed.isElective !== undefined) setIsElective(parsed.isElective);
@@ -165,11 +166,14 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
                 throw new Error("Invalid JSON structure. Missing 'title' or 'units' array.");
             }
 
-            const resolvedSemester = semester || parsed.semester || '';
-            const resolvedBranch = branch || parsed.branch || '';
-            const derivedYear = parsed.year || getYearFromSemester(resolvedSemester);
+            if (!branch || !semester) {
+                throw new Error("Please select a Branch and Semester.");
+            }
+            const resolvedSemester = semester;
+            const resolvedBranch = branch;
+            const derivedYear = getYearFromSemester(resolvedSemester);
 
-            const { id: parsedId, ...parsedRest } = parsed;
+            const { id: parsedId, branch: _b, semester: _s, year: _y, ...parsedRest } = parsed;
             const finalId = parsedId || crypto.randomUUID();
 
             const subjectPayload: Subject = {
