@@ -194,6 +194,7 @@ export function QuestionItem({
             <div className="flex-1 min-w-0 space-y-3">
                 {/* Question Text */}
                 {/* Question Text */}
+                {/* Question Text */}
                 {isEditing ? (
                     <div className="space-y-4 rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
                         <div className="grid gap-6 md:grid-cols-2">
@@ -208,58 +209,95 @@ export function QuestionItem({
                                     />
                                     <p className="mt-1 text-xs text-zinc-400">Use @ to split alternative questions. Use /& for new lines.</p>
                                 </div>
+
+                                {/* Image Management Per Part */}
                                 <div>
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={question.questionImageUrl || ''}
-                                                onChange={(e) => onUpdate?.(question.id, { questionImageUrl: e.target.value })}
-                                                placeholder="https://example.com/image.png"
-                                                className="flex-1 rounded border border-zinc-200 bg-white p-2 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                                            />
-                                            {question.questionImageUrl && (
-                                                <button
-                                                    onClick={() => {
-                                                        if (window.confirm('Are you sure you want to remove this image?')) {
-                                                            onUpdate?.(question.id, { questionImageUrl: '' });
-                                                        }
-                                                    }}
-                                                    className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400"
-                                                    title="Remove Image"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            )}
-                                        </div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase text-zinc-500">Images</label>
+                                    <div className="space-y-6">
+                                        {question.text.split('@').map((_, index) => {
+                                            const partKey = index.toString();
+                                            // Combine legacy and new images for display of part 0
+                                            let currentImages: string[] = question.images?.[partKey] || [];
+                                            if (index === 0 && question.questionImageUrl && !currentImages.includes(question.questionImageUrl)) {
+                                                // If legacy image exists and not already in list, treat it as existing
+                                                // But we should probably migrate it or just display it.
+                                                // Simplest: Check if it's there.
+                                                if (currentImages.length === 0) {
+                                                    currentImages = [question.questionImageUrl];
+                                                }
+                                            }
 
-                                        <div className="rounded-lg border border-dashed border-zinc-200 p-3 bg-zinc-50/50 dark:border-zinc-800">
-                                            <p className="mb-2 text-xs font-medium text-zinc-500">Upload New Image</p>
-                                            <ImageUploader
-                                                label="Select Image"
-                                                onUploadComplete={(url) => onUpdate?.(question.id, { questionImageUrl: url })}
-                                                folder="question-images"
-                                            />
-                                        </div>
+                                            return (
+                                                <div key={index} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800 bg-white dark:bg-zinc-950/50">
+                                                    <p className="mb-2 text-xs font-medium text-zinc-500 uppercase">
+                                                        {index === 0 ? "Main Question Images" : `OR Alternative #${index} Images`}
+                                                    </p>
 
-                                        {question.questionImageUrl && (
-                                            <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-950">
-                                                <Image
-                                                    src={question.questionImageUrl}
-                                                    alt="Question Preview"
-                                                    width={0}
-                                                    height={0}
-                                                    sizes="100vw"
-                                                    style={{ width: '100%', height: 'auto' }}
-                                                    className="max-h-64 object-contain"
-                                                    unoptimized
-                                                    onError={(e) => console.error("Question Image Load Error:", question.questionImageUrl, e)}
-                                                    onLoad={() => console.log("Question Image Loaded:", question.questionImageUrl)}
-                                                />
-                                            </div>
-                                        )}
+                                                    {/* Existing Images List */}
+                                                    {currentImages.length > 0 && (
+                                                        <div className="grid grid-cols-3 gap-2 mb-3">
+                                                            {currentImages.map((url, imgIdx) => (
+                                                                <div key={imgIdx} className="relative aspect-square rounded overflow-hidden border border-zinc-200 dark:border-zinc-700 group/img">
+                                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                    <Image
+                                                                        src={url}
+                                                                        alt="Preview"
+                                                                        width={100}
+                                                                        height={100}
+                                                                        className="h-full w-full object-cover"
+                                                                        unoptimized
+                                                                    />
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (window.confirm('Remove this image?')) {
+                                                                                const newImages = currentImages.filter(u => u !== url);
+                                                                                const newImagesMap = { ...(question.images || {}) };
+                                                                                if (newImages.length > 0) {
+                                                                                    newImagesMap[partKey] = newImages;
+                                                                                } else {
+                                                                                    delete newImagesMap[partKey];
+                                                                                }
+
+                                                                                // Handle Legacy Field Sync
+                                                                                let updates: Partial<Question> = { images: newImagesMap };
+                                                                                if (index === 0 && url === question.questionImageUrl) {
+                                                                                    updates.questionImageUrl = ''; // Clear legacy if removed
+                                                                                }
+                                                                                onUpdate?.(question.id, updates);
+                                                                            }
+                                                                        }}
+                                                                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity text-white hover:text-red-400"
+                                                                    >
+                                                                        <Trash2 className="h-5 w-5" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Uploader */}
+                                                    <ImageUploader
+                                                        label="Add Image"
+                                                        folder="question-images"
+                                                        onUploadComplete={(url) => {
+                                                            const newImages = [...currentImages, url];
+                                                            const newImagesMap = { ...(question.images || {}) };
+                                                            newImagesMap[partKey] = newImages;
+
+                                                            const updates: Partial<Question> = { images: newImagesMap };
+                                                            // Sync legacy for first image of first part
+                                                            if (index === 0 && !question.questionImageUrl) {
+                                                                updates.questionImageUrl = url;
+                                                            }
+                                                            onUpdate?.(question.id, updates);
+                                                        }}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
+
                                 <div>
                                     <label className="mb-2 block text-xs font-semibold uppercase text-zinc-500">History / Year Tags</label>
                                     <div className="space-y-2">
@@ -303,64 +341,85 @@ export function QuestionItem({
                             <div className="space-y-4">
                                 <label className="mb-2 block text-xs font-semibold uppercase text-zinc-500">Live Preview</label>
                                 <div className="space-y-4">
-                                    {question.text.split('@').map((text: string, index: number) => (
-                                        <div key={index} className={cn("prose prose-zinc max-w-none dark:prose-invert", index > 0 && "border-t border-zinc-200 pt-3 dark:border-zinc-700")}>
-                                            {index > 0 && <span className="mb-1 block text-xs font-medium uppercase text-zinc-400">OR</span>}
-                                            <ErrorBoundary label="question preview">
-                                                <MarkdownRenderer
-                                                    content={text.split('/&').join('  \n').trim()}
-                                                />
-                                            </ErrorBoundary>
-                                        </div>
-                                    ))}
+                                    {question.text.split('@').map((text: string, index: number) => {
+                                        // Preview images logic
+                                        const partKey = index.toString();
+                                        let displayImages = question.images?.[partKey] || [];
+                                        if (index === 0 && question.questionImageUrl && displayImages.length === 0) {
+                                            displayImages = [question.questionImageUrl];
+                                        }
+
+                                        return (
+                                            <div key={index} className={cn("prose prose-zinc max-w-none dark:prose-invert", index > 0 && "border-t border-zinc-200 pt-3 dark:border-zinc-700")}>
+                                                {index > 0 && <span className="mb-1 block text-xs font-medium uppercase text-zinc-400">OR</span>}
+                                                <ErrorBoundary label="question preview">
+                                                    <MarkdownRenderer
+                                                        content={text.split('/&').join('  \n').trim()}
+                                                    />
+                                                </ErrorBoundary>
+                                                {displayImages.length > 0 && (
+                                                    <div className="mt-4 grid gap-4">
+                                                        {displayImages.map((url, i) => (
+                                                            <div key={i} className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white">
+                                                                <Image
+                                                                    src={url}
+                                                                    alt={`Question Image ${i + 1}`}
+                                                                    width={0}
+                                                                    height={0}
+                                                                    sizes="(max-width: 768px) 100vw, 50vw"
+                                                                    className="max-h-64 w-full object-contain mx-auto h-auto"
+                                                                    unoptimized
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                                {question.questionImageUrl && (
-                                    <div className="mt-4">
-                                        <p className="mb-1 text-xs font-medium text-zinc-500">Image Preview:</p>
-                                        <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <Image
-                                                src={question.questionImageUrl}
-                                                alt="Question"
-                                                width={0}
-                                                height={0}
-                                                sizes="(max-width: 768px) 100vw, 50vw"
-                                                className="max-h-64 w-full object-contain mx-auto h-auto"
-                                                unoptimized
-                                            />
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {question.text.split('@').map((text: string, index: number) => (
-                            <div key={index} className={cn("prose prose-zinc max-w-none dark:prose-invert", index > 0 && "border-t border-zinc-100 pt-3 dark:border-zinc-800")}>
-                                {index > 0 && <span className="mb-1 block text-xs font-medium uppercase text-zinc-400">OR</span>}
-                                <ErrorBoundary label="question content">
-                                    <MarkdownRenderer
-                                        content={text.split('/&').join('  \n').trim()}
-                                    />
-                                </ErrorBoundary>
-                            </div>
-                        ))}
-                        {question.questionImageUrl && (
-                            <div className="mt-4 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white">
-                                {/* Fixed image display - ensuring object-contain */}
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <Image
-                                    src={question.questionImageUrl}
-                                    alt="Question Reference"
-                                    width={0}
-                                    height={0}
-                                    sizes="(max-width: 768px) 100vw, 600px"
-                                    className="max-h-96 w-full object-contain mx-auto h-auto"
-                                    unoptimized
-                                />
-                            </div>
-                        )}
+                        {question.text.split('@').map((text: string, index: number) => {
+                            const partKey = index.toString();
+                            let displayImages = question.images?.[partKey] || [];
+                            // Fallback for legacy
+                            if (index === 0 && question.questionImageUrl && displayImages.length === 0) {
+                                displayImages = [question.questionImageUrl];
+                            }
+
+                            return (
+                                <div key={index} className={cn("prose prose-zinc max-w-none dark:prose-invert", index > 0 && "border-t border-zinc-100 pt-3 dark:border-zinc-800")}>
+                                    {index > 0 && <span className="mb-1 block text-xs font-medium uppercase text-zinc-400">OR</span>}
+                                    <ErrorBoundary label="question content">
+                                        <MarkdownRenderer
+                                            content={text.split('/&').join('  \n').trim()}
+                                        />
+                                    </ErrorBoundary>
+
+                                    {displayImages.length > 0 && (
+                                        <div className="mt-4 grid gap-4">
+                                            {displayImages.map((url, i) => (
+                                                <div key={i} className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white">
+                                                    <Image
+                                                        src={url}
+                                                        alt={`Question Reference ${i + 1}`}
+                                                        width={0}
+                                                        height={0}
+                                                        sizes="(max-width: 768px) 100vw, 600px"
+                                                        className="max-h-96 w-full object-contain mx-auto h-auto"
+                                                        unoptimized
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 

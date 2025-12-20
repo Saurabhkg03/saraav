@@ -18,6 +18,7 @@ export type Question = {
     }[];
     questionImageUrl?: string;
     solutionImageUrl?: string;
+    images?: Record<string, string[]>; // Map index (string) -> array of image URLs
 };
 
 export type Unit = {
