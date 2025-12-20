@@ -9,31 +9,40 @@ interface MermaidDiagramProps {
 
 export default function MermaidDiagram({ content }: MermaidDiagramProps) {
     const [svg, setSvg] = useState<string>('');
-    const [error, setError] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
-    const renderId = useRef(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
+
+    useEffect(() => {
+        // Initialize once
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose',
+            fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+        });
+    }, []);
 
     useEffect(() => {
         const renderDiagram = async () => {
             if (!content) return;
-            setError(false);
+            setError(null);
 
             try {
-                mermaid.initialize({
-                    startOnLoad: false,
-                    theme: 'default',
-                    securityLevel: 'loose',
-                });
-
                 // Hotfix: Auto-correct common syntax errors in data
-                // The user reported "Expecting ... got 'TAGEND'" for syntax `-->|label|>`.
-                const sanitizedContent = content.replace(/\|\>/g, "|");
+                let sanitizedContent = content.replace(/\|\>/g, "|");
 
-                const { svg } = await mermaid.render(renderId.current, sanitizedContent);
+                // Fix: Quote node labels that contain parentheses but aren't already quoted
+                // Finds [Text (More Text)] and converts to ["Text (More Text)"]
+                sanitizedContent = sanitizedContent.replace(/\[(?![ "])(.*?\(.*?\).*?)(?<![ "])\]/g, '["$1"]');
+
+                // Generate unique ID for every render to avoid collisions
+                const uniqueId = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+
+                const { svg } = await mermaid.render(uniqueId, sanitizedContent);
                 setSvg(svg);
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Mermaid Render Failed:", err);
-                setError(true);
+                setError(err.message || "Unknown Mermaid Error");
             }
         };
 
@@ -44,7 +53,7 @@ export default function MermaidDiagram({ content }: MermaidDiagramProps) {
         return (
             <div className="relative my-4 overflow-hidden rounded-lg bg-zinc-900 border border-zinc-800">
                 <div className="flex items-center justify-between border-b border-zinc-700 bg-zinc-800/50 px-4 py-2 text-xs text-red-400">
-                    <span>mermaid (render failed)</span>
+                    <span>mermaid (render failed): {error}</span>
                 </div>
                 <pre className="overflow-x-auto p-4 text-sm text-zinc-100 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
                     <code>{content}</code>
@@ -65,8 +74,8 @@ export default function MermaidDiagram({ content }: MermaidDiagramProps) {
         <div className={cn("relative my-6 group", isExpanded ? "fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" : "")}>
             <div
                 className={cn(
-                    "relative overflow-hidden rounded-lg border border-zinc-200 bg-white p-4 text-center shadow-sm dark:border-zinc-700 dark:bg-zinc-900",
-                    isExpanded ? "max-h-[90vh] max-w-[90vw] overflow-auto bg-white dark:bg-zinc-900" : "w-full overflow-x-auto"
+                    "relative overflow-hidden rounded-lg border border-zinc-200 bg-white p-4 text-center shadow-sm dark:border-zinc-700",
+                    isExpanded ? "max-h-[90vh] max-w-[90vw] overflow-auto bg-white" : "w-full overflow-x-auto"
                 )}
             >
                 <div

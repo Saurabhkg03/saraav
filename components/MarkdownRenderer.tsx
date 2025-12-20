@@ -7,6 +7,8 @@ import 'katex/dist/katex.min.css';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { ExternalLink } from 'lucide-react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Dynamic import for Mermaid to avoid SSR issues and reduce bundle size
 const MermaidDiagram = dynamic(() => import('./MermaidDiagram'), {
@@ -103,15 +105,20 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, classN
                         }
 
                         return (
-                            <div className="relative my-4 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-900 dark:border-zinc-800">
+                            <div className="relative my-4 overflow-hidden rounded-lg border border-zinc-200 bg-[#1d1f21] dark:border-zinc-800">
                                 <div className="flex items-center justify-between border-b border-zinc-700 bg-zinc-800/50 px-4 py-2 text-xs text-zinc-400">
-                                    <span>{language}</span>
+                                    <span>{language || 'text'}</span>
                                 </div>
-                                <div className="overflow-x-auto p-4">
-                                    <code className={cn("font-mono text-sm text-zinc-100", className)} {...props}>
-                                        {children}
-                                    </code>
-                                </div>
+                                <SyntaxHighlighter
+                                    language={language}
+                                    style={atomDark}
+                                    customStyle={{ margin: 0, padding: '1rem', background: 'transparent' }}
+                                    wrapLongLines={true}
+                                    PreTag="div"
+                                    {...props}
+                                >
+                                    {String(children).replace(/\n$/, '')}
+                                </SyntaxHighlighter>
                             </div>
                         );
                     },
