@@ -753,7 +753,7 @@ export function QuestionItem({
                 </button>
 
                 <button
-                    onClick={() => setShowReportModal(true)}
+                    onClick={() => setIsReportModalOpen(true)}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-zinc-800"
                     title="Report Issue"
                 >
