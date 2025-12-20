@@ -44,7 +44,7 @@ export function WelcomeAnnouncementModal({ isOpen, onClose, config, isLoading }:
 
             {/* Modal Panel */}
             <div
-                className={`relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 shadow-xl transition-all duration-300 border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[85vh] ${showContent ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+                className={`relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 shadow-xl transition-all duration-300 border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[50vh] ${showContent ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
             >
                 {isLoading || !config ? (
                     <div className="animate-pulse">
