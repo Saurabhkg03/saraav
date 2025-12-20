@@ -44,7 +44,7 @@ export function WelcomeAnnouncementModal({ isOpen, onClose, config, isLoading }:
 
             {/* Modal Panel */}
             <div
-                className={`relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 shadow-xl transition-all duration-300 border border-zinc-200 dark:border-zinc-800 ${showContent ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+                className={`relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 shadow-xl transition-all duration-300 border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[85vh] ${showContent ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
             >
                 {isLoading || !config ? (
                     <div className="animate-pulse">
@@ -59,7 +59,7 @@ export function WelcomeAnnouncementModal({ isOpen, onClose, config, isLoading }:
                 ) : (
                     <>
                         {config.imageUrl && (
-                            <div className="relative h-48 w-full">
+                            <div className="relative h-48 w-full shrink-0">
                                 <Image
                                     src={config.imageUrl}
                                     alt="Welcome"
@@ -79,7 +79,7 @@ export function WelcomeAnnouncementModal({ isOpen, onClose, config, isLoading }:
                             <X className="h-5 w-5" />
                         </button>
 
-                        <div className="p-6">
+                        <div className="p-6 overflow-y-auto">
                             <h3 className="text-xl font-bold leading-6 text-zinc-900 dark:text-zinc-100">
                                 {config.title}
                             </h3>
