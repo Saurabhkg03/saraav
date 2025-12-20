@@ -23,9 +23,9 @@ export async function POST(req: NextRequest) {
 
         let isAuthorized = false;
 
-        // 1. Check Hardcoded Fallback (for bootstrapping)
-        const HARDCODED_ADMIN = "saurabhkg36@gmail.com";
-        if (email === HARDCODED_ADMIN) {
+        // 1. Check Env Variable (Secure)
+        const OWNER_EMAIL = process.env.OWNER_EMAIL;
+        if (OWNER_EMAIL && email === OWNER_EMAIL) {
             isAuthorized = true;
         }
 

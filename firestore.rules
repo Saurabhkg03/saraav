@@ -72,7 +72,7 @@ service cloud.firestore {
     // *** NEW RULE ADDED HERE ***
     // Allows admins to delete from the 'subject_contents' collection
     match /subject_contents/{contentId} {
-      allow read: if true;
+      allow read: if isAdmin();
       allow write: if isAdmin();
     }
 
