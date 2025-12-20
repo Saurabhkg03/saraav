@@ -92,42 +92,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (idTokenResult.claims.admin) {
                         setIsAdmin(true);
                     } else {
-                        // 2. SLOW PATH: Database Check (Fallback/Migration)
-                        const rolesDocRef = doc(db, "settings", "roles");
-                        const rolesSnap = await getDoc(rolesDocRef);
+                        // 2. SLOW PATH: API Check (Secure Fallback)
+                        // verifying via server instead of reading secure docs directly
+                        try {
+                            const token = await user.getIdToken();
+                            const res = await fetch('/api/admin/set-claims', {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
 
-                        let isDbAdmin = false;
-
-                        if (rolesSnap.exists()) {
-                            const adminEmails = rolesSnap.data().adminEmails || [];
-                            if (user.email && adminEmails.includes(user.email)) {
-                                isDbAdmin = true;
+                            if (res.ok) {
+                                // If API says "Yes, I set your claims", refresh immediately
+                                const result = await res.json();
+                                if (result.success) {
+                                    await user.getIdToken(true);
+                                    const newIdTokenrResult = await user.getIdTokenResult();
+                                    if (newIdTokenrResult.claims.admin) {
+                                        setIsAdmin(true);
+                                    }
+                                }
                             }
-                        } else {
-                            // Fallback for bootstrapping
-                            const HARDCODED_ADMIN = "saurabhkg36@gmail.com";
-                            if (user.email === HARDCODED_ADMIN) {
-                                isDbAdmin = true;
-                                await setDoc(rolesDocRef, { adminEmails: [HARDCODED_ADMIN] });
-                            }
-                        }
-
-                        if (isDbAdmin) {
-                            setIsAdmin(true);
-                            // 3. AUTO-UPGRADE: Set Claim for next time
-                            try {
-                                const token = await user.getIdToken();
-                                await fetch('/api/admin/set-claims', {
-                                    method: 'POST',
-                                    headers: { 'Authorization': `Bearer ${token}` }
-                                });
-                                // Force token refresh to get the new claim immediately
-                                await user.getIdToken(true);
-                            } catch (upgradeErr) {
-                                console.error("Auto-upgrade to admin claim failed:", upgradeErr);
-                            }
-                        } else {
-                            setIsAdmin(false);
+                        } catch (apiErr) {
+                            console.error("Admin check API failed:", apiErr);
                         }
                     }
                 } catch (err) {

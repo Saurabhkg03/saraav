@@ -25,11 +25,8 @@ export async function POST(req: Request) {
         const token = authHeader.split("Bearer ")[1];
         const decodedToken = await adminAuth.verifyIdToken(token);
 
-        // Check if user is admin
-        const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
-        const userData = userDoc.data();
-
-        if (!userData?.isAdmin) {
+        // Check if user is admin using Custom Claims (Secure)
+        if (decodedToken.admin !== true) {
             return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
         }
 

@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
 
         // 1. Check Env Variable (Secure)
         const OWNER_EMAIL = process.env.OWNER_EMAIL;
+        console.log(`[AdminCheck] Email: ${email}, Owner: ${OWNER_EMAIL}`); // Debug Log
         if (OWNER_EMAIL && email === OWNER_EMAIL) {
             isAuthorized = true;
         }

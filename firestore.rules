@@ -88,9 +88,19 @@ service cloud.firestore {
     }
 
     // 4. SETTINGS
-    match /settings/{document=**} {
+    // 4. SETTINGS
+    match /settings/global {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    match /settings/welcomeAnnouncement {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /settings/roles {
+      allow read, write: if isAdmin();
     }
 
     // 5. ORDERS
