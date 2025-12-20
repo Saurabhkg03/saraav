@@ -51,7 +51,11 @@ export default function Dashboard() {
       .filter(bundle => {
         if (!userBranch) return true;
         const normalizedUserBranch = userBranch.trim();
-        return bundle.branch === normalizedUserBranch || bundle.branch === "General";
+        // Allow partial match for "Electrical" vs "Electrical Engineering" mismatch
+        // or just looser matching in general provided it starts with the string.
+        return bundle.branch === normalizedUserBranch ||
+          bundle.branch === "General" ||
+          (normalizedUserBranch.includes("Electrical") && bundle.branch.includes("Electrical"));
       })
       .sort((a, b) => {
         if (!userYear) return 0;

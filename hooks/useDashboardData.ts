@@ -47,11 +47,11 @@ export function useDashboardData() {
                 const branchPromise = (async () => {
                     const results: SubjectMetadata[] = [];
 
-                    // Fetch a small subset of subjects for discovery (Limit reads)
-                    // The user requested "any 3 subjects", we'll fetch 10 to provide some variety for bundles
+                    // Fetch all subjects (capped at 300) to ensure we can build complete bundles for the dashboard.
+                    // This is necessary because 'bundles' are aggregated client-side from subjects.
                     const q = query(
                         collection(db, "subjects_metadata"),
-                        limit(10)
+                        limit(300)
                     );
 
                     const snap = await getDocs(q);
