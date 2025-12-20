@@ -8,6 +8,9 @@ import { updateBundle } from '@/lib/bundleUtils';
 interface JsonImportModalProps {
     isOpen: boolean;
     onClose: () => void;
+    mode?: 'create' | 'update';
+    targetSubjectId?: string;
+    targetSubjectTitle?: string;
 }
 
 // Helper to derive year
@@ -22,7 +25,7 @@ function getYearFromSemester(semester: string): string {
     return 'Fourth Year';
 }
 
-export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
+export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjectId, targetSubjectTitle }: JsonImportModalProps) {
     const [jsonInput, setJsonInput] = useState('');
     const [branch, setBranch] = useState('');
     const [semester, setSemester] = useState('');
@@ -174,7 +177,34 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
             const derivedYear = getYearFromSemester(resolvedSemester);
 
             const { id: parsedId, branch: _b, semester: _s, year: _y, ...parsedRest } = parsed;
-            const finalId = parsedId || crypto.randomUUID();
+
+            // Mode-specific ID handling
+            let finalId = parsedId || crypto.randomUUID();
+            let unitMap = new Map<string, string>(); // Title -> ID
+            let questionMap = new Map<string, string>(); // Text -> ID
+
+            if (mode === 'update' && targetSubjectId) {
+                finalId = targetSubjectId;
+
+                // Fetch existing structure to preserve IDs
+                try {
+                    const unitsSnap = await getDocs(collection(db, "subjects", targetSubjectId, "units"));
+                    unitsSnap.docs.forEach(doc => {
+                        const data = doc.data();
+                        if (data.title) unitMap.set(data.title, doc.id);
+                        if (Array.isArray(data.questions)) {
+                            data.questions.forEach((q: any) => {
+                                if (q.text) questionMap.set(q.text, q.id);
+                            });
+                        }
+                    });
+                } catch (e) {
+                    console.error("Failed to fetch existing IDs for merge:", e);
+                    // Fallback to new IDs if fetch fails, or maybe abort? 
+                    // Proceeding risks duplicating, but blocking prevents update. 
+                    // Warn user? For now proceed.
+                }
+            }
 
             const subjectPayload: Subject = {
                 ...parsedRest,
@@ -190,17 +220,25 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 units: parsed.units.map((u: any) => {
                     const { id: uId, ...uRest } = u;
+                    // Try to reuse ID if Update mode
+                    const matchedUnitId = mode === 'update' ? unitMap.get(u.title) : null;
+                    const finalUnitId = matchedUnitId || uId || crypto.randomUUID();
+
                     return {
                         ...uRest,
-                        id: uId || crypto.randomUUID(),
+                        id: finalUnitId,
                         topics: u.topics || [],
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         questions: u.questions?.map((q: any) => {
                             const { id: qId, ...qRest } = q;
+                            // Try to reuse ID if Update mode
+                            const matchedQuestionId = mode === 'update' ? questionMap.get(q.text) : null;
+                            const finalQuestionId = matchedQuestionId || qId || crypto.randomUUID();
+
                             return {
                                 ...qRest,
-                                id: qId || crypto.randomUUID(),
-                                isChecked: false,
+                                id: finalQuestionId,
+                                isChecked: false, // This is just initial state for new docs, existing user progress is in User document, not here.
                                 hasDiagram: q.hasDiagram || 0,
                                 history: q.history || []
                             };
@@ -209,8 +247,8 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
                 })
             };
 
-            // CHECK 1: ID Conflict
-            if (parsed.id) {
+            // CHECK 1: ID Conflict (Skip if Update)
+            if (mode !== 'update' && parsed.id) {
                 const docSnap = await getDoc(doc(db, "subjects_metadata", parsed.id));
                 if (docSnap.exists()) {
                     const existingData = { id: docSnap.id, ...docSnap.data() } as SubjectMetadata;
@@ -226,28 +264,28 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
             }
 
             // CHECK 2: Duplicate Content (Title + Branch + Semester)
-            // Only check if we didn't just find an ID conflict
-            const q = query(
-                collection(db, "subjects_metadata"),
-                where("title", "==", subjectPayload.title),
-                where("branch", "==", subjectPayload.branch),
-                where("semester", "==", subjectPayload.semester)
-            );
-            const querySnap = await getDocs(q);
+            // Only check if we didn't just find an ID conflict AND not in update mode
+            if (mode !== 'update') {
+                const q = query(
+                    collection(db, "subjects_metadata"),
+                    where("title", "==", subjectPayload.title),
+                    where("branch", "==", subjectPayload.branch),
+                    where("semester", "==", subjectPayload.semester)
+                );
+                const querySnap = await getDocs(q);
 
-            if (!querySnap.empty) {
-                const existing = querySnap.docs[0].data() as SubjectMetadata;
-                const { id: existingDataId, ...restOfExistingData } = existing; // Destructure id from existing data
-                // If the IDs match, it would have been caught by ID check (unless ID was missing in input but generated same? Unlikely).
-                // Usually this catches "Same Name but New/Different ID" or "Same Name but Input has NO ID"
-                setConflict({
-                    type: 'duplicate',
-                    existingSubject: { id: querySnap.docs[0].id, ...restOfExistingData },
-                    payload: subjectPayload
-                });
-                setRenameTitle(subjectPayload.title);
-                setImporting(false);
-                return;
+                if (!querySnap.empty) {
+                    const existing = querySnap.docs[0].data() as SubjectMetadata;
+                    const { id: existingDataId, ...restOfExistingData } = existing;
+                    setConflict({
+                        type: 'duplicate',
+                        existingSubject: { id: querySnap.docs[0].id, ...restOfExistingData },
+                        payload: subjectPayload
+                    });
+                    setRenameTitle(subjectPayload.title);
+                    setImporting(false);
+                    return;
+                }
             }
 
             // No conflicts, proceed
@@ -378,7 +416,9 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
             ) : (
                 <div className="w-full max-w-2xl rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-semibold text-zinc-100">Import Subject from JSON</h2>
+                        <h2 className="text-xl font-semibold text-zinc-100">
+                            {mode === 'update' ? `Update Content: ${targetSubjectTitle}` : 'Import Subject from JSON'}
+                        </h2>
                         <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
                             <X className="h-5 w-5" />
                         </button>
@@ -545,7 +585,7 @@ export function JsonImportModal({ isOpen, onClose }: JsonImportModalProps) {
                             className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Upload className="h-4 w-4" />
-                            {importing ? 'Checking...' : 'Import Subject'}
+                            {importing ? 'Processing...' : (mode === 'update' ? 'Update Content' : 'Import Subject')}
                         </button>
                     </div>
                 </div>

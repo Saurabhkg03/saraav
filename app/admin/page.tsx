@@ -31,6 +31,7 @@ export default function AdminPage() {
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<any>(null);
+    const [updateTarget, setUpdateTarget] = useState<{ id: string, title: string } | null>(null);
     const [selectedBranch, setSelectedBranch] = useState<string>('All');
     const [selectedSemester, setSelectedSemester] = useState<string>('All');
     const [searchQuery, setSearchQuery] = useState('');
@@ -542,6 +543,12 @@ export default function AdminPage() {
                                         Edit
                                     </button>
                                     <button
+                                        onClick={() => setUpdateTarget({ id: subject.id, title: subject.title })}
+                                        className="rounded-lg px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                                    >
+                                        Update JSON
+                                    </button>
+                                    <button
                                         onClick={() => handleDownloadJson(subject)}
                                         disabled={downloadingId === subject.id}
                                         className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 disabled:opacity-50"
@@ -575,9 +582,16 @@ export default function AdminPage() {
                 )}
             </div>
 
+            {/* Modal for Import / Update */}
             <JsonImportModal
-                isOpen={isImportModalOpen}
-                onClose={() => setIsImportModalOpen(false)}
+                isOpen={isImportModalOpen || !!updateTarget}
+                onClose={() => {
+                    setIsImportModalOpen(false);
+                    setUpdateTarget(null);
+                }}
+                mode={updateTarget ? 'update' : 'create'}
+                targetSubjectId={updateTarget?.id}
+                targetSubjectTitle={updateTarget?.title}
             />
 
             <EditSubjectModal
