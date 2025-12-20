@@ -61,11 +61,11 @@ export function QuestionGuideModal({ isOpen, onClose }: QuestionGuideModalProps)
 
                     {/* Image Area - Large and Scrollable */}
                     <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-[400px]">
-                        {/* Placeholder Image - User will replace this path */}
-                        <div className="relative w-full h-auto aspect-video max-w-4xl rounded-xl overflow-hidden shadow-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-200 dark:bg-zinc-800">
+                        {/* Desktop Image - Hidden on mobile */}
+                        <div className="relative w-full h-auto hidden md:block aspect-video max-w-4xl rounded-xl overflow-hidden shadow-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-200 dark:bg-zinc-800">
                             <Image
-                                src="/question-guide.png" // User needs to provide this
-                                alt="Question Page Guide"
+                                src="/question-guide-desktop.png"
+                                alt="Question Page Guide (Desktop)"
                                 width={1280}
                                 height={720}
                                 className="w-full h-auto object-contain"
@@ -73,7 +73,23 @@ export function QuestionGuideModal({ isOpen, onClose }: QuestionGuideModalProps)
                             />
                             {/* Fallback visual if image missing (dev only) */}
                             <div className="absolute inset-0 -z-10 flex items-center justify-center text-zinc-400 text-sm">
-                                Subject Guide Image (/question-guide.png)
+                                Desktop Guide (/question-guide-desktop.png)
+                            </div>
+                        </div>
+
+                        {/* Mobile Image - Hidden on desktop */}
+                        <div className="relative w-full h-auto md:hidden aspect-[9/16] max-w-sm rounded-xl overflow-hidden shadow-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-200 dark:bg-zinc-800">
+                            <Image
+                                src="/question-guide-mobile.png"
+                                alt="Question Page Guide (Mobile)"
+                                width={720}
+                                height={1280}
+                                className="w-full h-auto object-contain"
+                                unoptimized
+                            />
+                            {/* Fallback visual if image missing (dev only) */}
+                            <div className="absolute inset-0 -z-10 flex items-center justify-center text-zinc-400 text-sm">
+                                Mobile Guide (/question-guide-mobile.png)
                             </div>
                         </div>
                     </div>

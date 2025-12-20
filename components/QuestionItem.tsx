@@ -193,6 +193,14 @@ export function QuestionItem({
                     >
                         <StickyNote className="h-6 w-6" />
                     </button>
+
+                    <button
+                        onClick={() => setIsReportModalOpen(true)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 transition-colors hover:text-red-500 dark:text-zinc-600"
+                        title="Report Issue"
+                    >
+                        <Flag className="h-6 w-6" />
+                    </button>
                 </div>
             </div>
 
@@ -745,11 +753,11 @@ export function QuestionItem({
                 </button>
 
                 <button
-                    onClick={() => setIsReportModalOpen(true)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 transition-colors hover:text-red-500 dark:text-zinc-600"
+                    onClick={() => setShowReportModal(true)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-zinc-800"
                     title="Report Issue"
                 >
-                    <Flag className="h-6 w-6" />
+                    <Flag className="h-5 w-5" />
                 </button>
 
                 {isAdmin && (
