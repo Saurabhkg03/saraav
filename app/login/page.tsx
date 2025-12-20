@@ -52,13 +52,13 @@ export default function LoginPage() {
                     <div className="mb-8 flex justify-center">
                         <div className="relative">
                             <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 blur opacity-75" />
-                            <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900 text-white shadow-xl overflow-hidden">
+                            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-xl overflow-hidden ring-4 ring-white/10">
                                 <Image
                                     src="/icon.png"
                                     alt="Logo"
-                                    width={40}
-                                    height={40}
-                                    className="h-10 w-10 object-contain p-0.5"
+                                    width={80}
+                                    height={80}
+                                    className="h-full w-full object-cover"
                                 />
                             </div>
                         </div>

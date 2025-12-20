@@ -13,6 +13,7 @@ import { SyllabusView } from "@/components/SyllabusView";
 import { useProgress } from "@/hooks/useProgress";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { QuestionGuideModal } from "@/components/modals/QuestionGuideModal";
 
 export default function SubjectPage() {
     const params = useParams();
@@ -29,9 +30,28 @@ export default function SubjectPage() {
     const [loadedUnits, setLoadedUnits] = useState<Record<string, Unit>>({});
     const [loadingUnit, setLoadingUnit] = useState<string | null>(null);
     const [loadedSolutions, setLoadedSolutions] = useState<Record<string, string>>({});
+    const [showGuide, setShowGuide] = useState(false);
 
     const { progressMap, updateStatus, toggleStar, saveNote, getNote, loading: progressLoading } = useProgress(subjectId);
     const { isAdmin, user, checkAccess, loading: authLoading } = useAuth(); // Removed purchasedCourseIds
+
+    useEffect(() => {
+        if (user) {
+            const hasSeenGuide = localStorage.getItem(`hasSeenQuestionGuide_${user.uid}`);
+            if (!hasSeenGuide) {
+                // Delay slightly to appear after initial rendering
+                const timer = setTimeout(() => setShowGuide(true), 1000); // Reduced delay slightly
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [user]);
+
+    const handleCloseGuide = () => {
+        if (user) {
+            localStorage.setItem(`hasSeenQuestionGuide_${user.uid}`, 'true');
+        }
+        setShowGuide(false);
+    };
 
     // Route Guard: Check if user has purchased the course and it is valid
     useEffect(() => {
@@ -478,6 +498,11 @@ export default function SubjectPage() {
                     metadata && <SyllabusView units={metadata.units} />
                 )}
             </div>
+
+            <QuestionGuideModal
+                isOpen={showGuide}
+                onClose={handleCloseGuide}
+            />
         </div>
     );
 }
