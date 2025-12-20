@@ -78,19 +78,15 @@ export function QuestionGuideModal({ isOpen, onClose }: QuestionGuideModalProps)
                         </div>
 
                         {/* Mobile Image - Hidden on desktop */}
-                        <div className="relative w-full h-auto md:hidden aspect-[9/16] max-w-sm rounded-xl overflow-hidden shadow-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-200 dark:bg-zinc-800">
+                        <div className="relative w-full md:hidden rounded-xl overflow-hidden shadow-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-200 dark:bg-zinc-801">
                             <Image
                                 src="/question-guide-mobile.png"
                                 alt="Question Page Guide (Mobile)"
                                 width={720}
                                 height={1280}
-                                className="w-full h-auto object-contain"
+                                className="w-full h-auto"
                                 unoptimized
                             />
-                            {/* Fallback visual if image missing (dev only) */}
-                            <div className="absolute inset-0 -z-10 flex items-center justify-center text-zinc-400 text-sm">
-                                Mobile Guide (/question-guide-mobile.png)
-                            </div>
                         </div>
                     </div>
 
