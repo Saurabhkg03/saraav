@@ -6,6 +6,8 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { Skeleton } from "@/components/ui/skeleton";
 import ImageUploader from './ImageUploader';
+import { useAuth } from '@/context/AuthContext';
+import { Pencil, Check } from 'lucide-react';
 
 const MarkdownRenderer = dynamic(() => import('./MarkdownRenderer').then(mod => mod.MarkdownRenderer), {
     loading: () => <Skeleton className="h-20 w-full" />,
@@ -52,6 +54,8 @@ export function QuestionItem({
     subjectId,
     unitId
 }: QuestionItemProps) {
+    const { isAdmin } = useAuth();
+    const [localEditMode, setLocalEditMode] = useState(false);
     const [loadingSolution, setLoadingSolution] = useState(false);
     const [showVideo, setShowVideo] = useState(false);
     const [showSolution, setShowSolution] = useState(false);
@@ -61,13 +65,15 @@ export function QuestionItem({
     const [loadingNote, setLoadingNote] = useState(false);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+    const effectiveIsEditing = isEditing || localEditMode;
+
     // Automatically load solution if editing and it's not available
     useEffect(() => {
-        if (isEditing && !question.solution && !cachedSolution && question.hasSolution && onLoadSolution) {
+        if (effectiveIsEditing && !question.solution && !cachedSolution && question.hasSolution && onLoadSolution) {
             setLoadingSolution(true);
             onLoadSolution(question.id).finally(() => setLoadingSolution(false));
         }
-    }, [isEditing, question.solution, cachedSolution, question.hasSolution, onLoadSolution, question.id]);
+    }, [effectiveIsEditing, question.solution, cachedSolution, question.hasSolution, onLoadSolution, question.id]);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(question.text);
@@ -195,7 +201,7 @@ export function QuestionItem({
                 {/* Question Text */}
                 {/* Question Text */}
                 {/* Question Text */}
-                {isEditing ? (
+                {effectiveIsEditing ? (
                     <div className="space-y-4 rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
                         <div className="grid gap-6 md:grid-cols-2">
                             {/* Edit Column */}
@@ -410,7 +416,7 @@ export function QuestionItem({
                                                         width={0}
                                                         height={0}
                                                         sizes="(max-width: 768px) 100vw, 600px"
-                                                        className="max-h-96 w-full object-contain mx-auto h-auto"
+                                                        className="max-h-96 md:max-h-72 w-full md:w-auto md:max-w-2xl object-contain mx-auto h-auto"
                                                         unoptimized
                                                     />
                                                 </div>
@@ -460,7 +466,7 @@ export function QuestionItem({
                 </div>
 
                 {/* Solution and Video Buttons */}
-                {!isEditing && (hasSolution || question.video) && (
+                {!effectiveIsEditing && (hasSolution || question.video) && (
                     <div className="flex flex-wrap gap-2 pt-2">
                         {hasSolution && (
                             <button
@@ -541,9 +547,9 @@ export function QuestionItem({
                 )}
 
                 {/* Solution Content (Desktop Only) */}
-                {((showSolution && solutionText) || isEditing) && (
+                {((showSolution && solutionText) || effectiveIsEditing) && (
                     <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
-                        {isEditing ? (
+                        {effectiveIsEditing ? (
                             <div className="p-4">
                                 <h4 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Solution Editor</h4>
                                 <div className="grid gap-6 md:grid-cols-2">
@@ -621,6 +627,7 @@ export function QuestionItem({
                                                     height={0}
                                                     sizes="(max-width: 768px) 100vw, 50vw"
                                                     className="max-h-64 w-full object-contain mx-auto h-auto"
+                                                    unoptimized
                                                 />
                                             </div>
                                         )}
@@ -646,7 +653,7 @@ export function QuestionItem({
                                                 width={0}
                                                 height={0}
                                                 sizes="(max-width: 768px) 100vw, 600px"
-                                                className="max-h-96 w-full object-contain mx-auto h-auto max-w-full"
+                                                className="max-h-96 md:max-h-72 w-full md:w-auto md:max-w-2xl object-contain mx-auto h-auto"
                                                 unoptimized
                                             />
                                         </div>
@@ -669,7 +676,7 @@ export function QuestionItem({
                     </div>
                 )}
 
-                {isEditing && (
+                {effectiveIsEditing && (
                     <button
                         onClick={() => onDelete?.(question.id)}
                         className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-600 hover:underline"
@@ -744,6 +751,25 @@ export function QuestionItem({
                 >
                     <Flag className="h-6 w-6" />
                 </button>
+
+                {isAdmin && (
+                    <button
+                        onClick={() => setLocalEditMode(!localEditMode)}
+                        className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                            localEditMode
+                                ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
+                                : "text-zinc-300 hover:text-indigo-600 dark:text-zinc-600"
+                        )}
+                        title={localEditMode ? "Done Editing" : "Edit Question"}
+                    >
+                        {localEditMode ? (
+                            <Check className="h-5 w-5" />
+                        ) : (
+                            <Pencil className="h-5 w-5" />
+                        )}
+                    </button>
+                )}
             </div>
 
             <SolutionModal

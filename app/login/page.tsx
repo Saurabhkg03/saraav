@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -51,8 +52,14 @@ export default function LoginPage() {
                     <div className="mb-8 flex justify-center">
                         <div className="relative">
                             <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 blur opacity-75" />
-                            <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900 text-white shadow-xl">
-                                <Sparkles className="h-8 w-8 text-indigo-400" />
+                            <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900 text-white shadow-xl overflow-hidden">
+                                <Image
+                                    src="/icon.png"
+                                    alt="Logo"
+                                    width={40}
+                                    height={40}
+                                    className="h-10 w-10 object-contain p-0.5"
+                                />
                             </div>
                         </div>
                     </div>
