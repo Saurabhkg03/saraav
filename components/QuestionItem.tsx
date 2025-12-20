@@ -205,7 +205,7 @@ export function QuestionItem({
             </div>
 
             {/* Middle: Content */}
-            <div className="flex-1 min-w-0 space-y-3">
+            <div className="flex-1 min-w-0 w-0 space-y-3">
                 {/* Question Text */}
                 {/* Question Text */}
                 {/* Question Text */}

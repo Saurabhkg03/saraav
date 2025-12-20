@@ -125,7 +125,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, classN
                     // responsive tables
                     table({ children }) {
                         return (
-                            <div className="my-6 block w-full overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50">
+                            <div className="my-6 block w-full max-w-full overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50">
                                 <table className="min-w-full text-left text-sm">
                                     {children}
                                 </table>
