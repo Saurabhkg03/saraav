@@ -94,7 +94,7 @@ export default function RootLayout({
               <SpeedInsights />
               <FeedbackReminder />
               <WelcomeModalContainer />
-              <div className="flex min-h-screen flex-col bg-white dark:bg-black">
+              <div className="flex min-h-screen flex-col bg-white dark:bg-black pt-16">
                 <Navbar />
                 <LayoutWrapper>
                   {children}
