@@ -14,11 +14,19 @@ export default function MermaidDiagram({ content }: MermaidDiagramProps) {
 
     useEffect(() => {
         // Initialize once
+        // Initialize with robust settings for all diagram types
         mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
             securityLevel: 'loose',
             fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+            maxTextSize: 90000, // Prevent truncation
+
+            // Diagram-specific configurations to ensure they load
+            flowchart: { htmlLabels: true, curve: 'basis' },
+            sequence: { showSequenceNumbers: true },
+            gantt: { axisFormat: '%Y-%m-%d' },
+            journey: { useMaxWidth: true },
         });
     }, []);
 
@@ -34,6 +42,15 @@ export default function MermaidDiagram({ content }: MermaidDiagramProps) {
                 // Fix: Quote node labels that contain parentheses but aren't already quoted
                 // Finds [Text (More Text)] and converts to ["Text (More Text)"]
                 sanitizedContent = sanitizedContent.replace(/\[(?![ "])(.*?\(.*?\).*?)(?<![ "])\]/g, '["$1"]');
+
+                // Fix: Multi-actor notes in sequence diagrams (Note over A,B,C) -> (Note over A,C)
+                // Mermaid only supports start and end actor for notes, not intermediate ones.
+                sanitizedContent = sanitizedContent.replace(
+                    /(Note\s+over\s+)([^,:\n]+)((?:,[^,:\n]+)+)(,[^,:\n]+)(\s*:)/gi,
+                    (match, prefix, first, middle, last, suffix) => {
+                        return `${prefix}${first}${last}${suffix}`;
+                    }
+                );
 
                 // Generate unique ID for every render to avoid collisions
                 const uniqueId = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
