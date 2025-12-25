@@ -125,8 +125,7 @@ export default function FeedbackPage() {
 
 Thanks for your ${feedback.category} feedback!
 
-The issue has been resolved. If you have any other feedback, please let us know.
-
+[write your reply here]
 
 Best regards,
 Saurabh

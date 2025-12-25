@@ -185,7 +185,7 @@ export default function ReportsPage() {
 
 Thanks for reaching out regarding your report on Saraav.
 
-[ WRITE YOUR REPLY HERE ]
+The issue has been resolved. If you have any other feedback, please let us know.
 
 Best regards,
 Saurabh
