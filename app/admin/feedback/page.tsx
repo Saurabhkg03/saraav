@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
-import { ArrowLeft, CheckCircle, Clock, Filter, Loader2, Trash2, XCircle, Download, ExternalLink } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, Filter, Loader2, Trash2, XCircle, Download, ExternalLink, Mail, Send, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type FeedbackStatus = 'pending' | 'resolved' | 'dismissed';
@@ -28,6 +28,11 @@ export default function FeedbackPage() {
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<FeedbackStatus | 'all'>('all');
     const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+    // Reply Modal State
+    const [replyModalOpen, setReplyModalOpen] = useState(false);
+    const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
+    const [replyMessage, setReplyMessage] = useState('');
 
     useEffect(() => {
         if (!authLoading && !isAdmin) {
@@ -110,6 +115,51 @@ export default function FeedbackPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    // Reply Logic
+    const openReplyModal = (feedback: Feedback) => {
+        setSelectedFeedback(feedback);
+
+        const template = `Hi there,
+
+Thanks for reaching out! I've read your ${feedback.category} feedback.
+
+[ WRITE YOUR REPLY HERE ]
+
+--------------------------------------------------
+Your Original Feedback:
+• Category: ${feedback.category}
+• Message: "${feedback.message}"
+${feedback.url ? `• From: ${feedback.url}` : ''}
+
+Thanks for helping make Saraav better!
+
+Best regards,
+Saurabh
+Founder, Saraav`;
+
+        setReplyMessage(template);
+        setReplyModalOpen(true);
+    };
+
+    const handleOpenGmail = () => {
+        if (!selectedFeedback) return;
+
+        const recipient = selectedFeedback.userEmail || '';
+        const subject = `Regarding your feedback on Saraav`;
+        const body = replyMessage;
+
+        const gmailUrl = `https://mail.google.com/mail/?authuser=saraav.connect@gmail.com&view=cm&fs=1&to=${encodeURIComponent(recipient)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+        window.open(gmailUrl, '_blank');
+        setReplyModalOpen(false);
+    };
+
+    const closeReplyModal = () => {
+        setReplyModalOpen(false);
+        setSelectedFeedback(null);
+        setReplyMessage('');
     };
 
     if (authLoading || loading) {
@@ -221,9 +271,9 @@ export default function FeedbackPage() {
                                         <span className="text-xs text-zinc-400">
                                             {new Date(item.createdAt).toLocaleString()}
                                         </span>
-                                        <span className="text-xs text-zinc-400">
-                                            by {item.userEmail}
-                                        </span>
+                                        <div className="flex items-center gap-1 text-xs text-zinc-400">
+                                            <span>by {item.userEmail}</span>
+                                        </div>
                                     </div>
 
                                     <div>
@@ -245,7 +295,16 @@ export default function FeedbackPage() {
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex flex-row md:flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l border-zinc-100 md:pl-6 pt-4 md:pt-0 dark:border-zinc-800">
+                                <div className="flex flex-row md:flex-col gap-4 shrink-0 border-t md:border-t-0 md:border-l border-zinc-100 md:pl-6 pt-4 md:pt-0 dark:border-zinc-800 md:min-w-[200px]">
+                                    {/* Primary Action */}
+                                    <button
+                                        onClick={() => openReplyModal(item)}
+                                        className="hidden md:flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 shadow-sm"
+                                    >
+                                        <Mail className="h-4 w-4" />
+                                        Reply via Email
+                                    </button>
+
                                     <div className="flex flex-col gap-2 w-full">
                                         <p className="text-xs font-medium text-zinc-500 uppercase">Status</p>
                                         <select
@@ -265,6 +324,15 @@ export default function FeedbackPage() {
                                         </select>
                                     </div>
 
+                                    {/* Mobile Reply Button */}
+                                    <button
+                                        onClick={() => openReplyModal(item)}
+                                        className="flex md:hidden flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+                                    >
+                                        <Mail className="h-4 w-4" />
+                                        Reply
+                                    </button>
+
                                     <div className="mt-auto pt-4 flex items-center justify-between gap-4">
                                         <button
                                             onClick={() => handleDelete(item.id)}
@@ -281,6 +349,59 @@ export default function FeedbackPage() {
                     ))
                 )}
             </div>
+
+            {/* Reply Modal */}
+            {replyModalOpen && selectedFeedback && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                            <div>
+                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Draft Reply</h3>
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400">To: {selectedFeedback.userEmail}</p>
+                            </div>
+                            <button
+                                onClick={closeReplyModal}
+                                className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-500 dark:hover:bg-zinc-800"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6">
+                            <textarea
+                                value={replyMessage}
+                                onChange={(e) => setReplyMessage(e.target.value)}
+                                className="h-80 w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 p-4 font-mono text-sm leading-relaxed text-zinc-900 focus:border-indigo-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                                placeholder="Write your reply..."
+                                autoFocus
+                            />
+                            <p className="mt-2 text-xs text-zinc-400 flex items-center gap-1">
+                                <ExternalLink className="h-3 w-3" />
+                                This will open in Gmail. You can review before sending.
+                            </p>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 border-t border-zinc-100 bg-zinc-50 px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+                            <button
+                                onClick={closeReplyModal}
+                                className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleOpenGmail}
+                                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md"
+                            >
+                                <Send className="h-4 w-4" />
+                                Open in Gmail & Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
