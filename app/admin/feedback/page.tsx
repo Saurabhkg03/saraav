@@ -125,8 +125,8 @@ export default function FeedbackPage() {
 
 Thanks for your ${feedback.category} feedback!
 
-The issue has been resolved. If you have any other feedback, please let us know.
-
+[ WRITE YOUR REPLY HERE ]
+ 
 Best regards,
 Saurabh
 Saraav Team
