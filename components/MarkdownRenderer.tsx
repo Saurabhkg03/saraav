@@ -10,9 +10,11 @@ import { ExternalLink } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
+import { Skeleton } from '@/components/ui/skeleton';
+
 // Dynamic import for Mermaid to avoid SSR issues and reduce bundle size
 const MermaidDiagram = dynamic(() => import('./MermaidDiagram'), {
-    loading: () => <div className="animate-pulse h-24 bg-zinc-100 rounded-lg dark:bg-zinc-800" />,
+    loading: () => <Skeleton className="h-24 w-full" />,
     ssr: false
 });
 
