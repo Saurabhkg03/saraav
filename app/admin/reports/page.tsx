@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Report, ReportStatus } from '@/lib/types';
-import { ArrowLeft, CheckCircle, Clock, ExternalLink, Filter, Loader2, Trash2, XCircle, Mail, Send, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, ExternalLink, Filter, Loader2, Trash2, XCircle, Mail, Send, X, Clipboard } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { cn } from '@/lib/utils'; // Assuming this exists, based on other files
+import { cn } from '@/lib/utils';
+import { PROFESSOR_BASE_SYSTEM_PROMPT, COMPARISON_OVERRIDE_TEXT } from '@/lib/prompts';
 
 export default function ReportsPage() {
     const { isAdmin, loading: authLoading } = useAuth();
@@ -80,6 +81,98 @@ export default function ReportsPage() {
         }
     };
 
+
+
+    // Prompt Generation Helpers
+    const isComparison = (text: string): boolean => {
+        if (!text) return false;
+        const keywords = ['compare', 'difference', 'distinguish', 'vs', 'versus'];
+        const lowerText = text.toLowerCase();
+        return keywords.some(keyword => lowerText.includes(keyword));
+    };
+
+    const getDepthInstruction = (history: { year: string; marks: string }[] | undefined): string => {
+        if (!history || history.length === 0) return "Provide a comprehensive answer (approx. 2-3 pages).";
+
+        let totalMarks = 0;
+        let count = 0;
+
+        history.forEach(item => {
+            const marks = parseInt(item.marks);
+            if (!isNaN(marks)) {
+                totalMarks += marks;
+                count++;
+            }
+        });
+
+        if (count === 0) return "Provide a comprehensive answer (approx. 2-3 pages).";
+
+        const avg = totalMarks / count;
+
+        if (avg < 5) return "Provide a concise answer (3-4 marks).";
+        if (avg > 10) return "Provide an extensive, in-depth answer (13 marks).";
+        return "Provide a comprehensive answer (approx. 2-3 pages).";
+    };
+
+    const handleCopyPrompt = async (report: Report) => {
+        const questionText = report.questionSnapshot?.text || '';
+        if (!questionText) {
+            alert('No question text available to generate prompt.');
+            return;
+        }
+
+        const depthInstruction = getDepthInstruction(report.questionSnapshot?.history);
+        const isComp = isComparison(questionText);
+
+        let previousSolution = report.questionSnapshot?.solution || '';
+
+        // Fallback: Fetch solution if missing (for legacy reports)
+        if (!previousSolution && report.questionSnapshot?.subjectId && report.questionSnapshot?.unitId && report.questionId) {
+            try {
+                // Fetch solution from: subjects/{subjectId}/units/{unitId}/questions/{questionId}
+                const questionRef = doc(db, 'subjects', report.questionSnapshot.subjectId, 'units', report.questionSnapshot.unitId, 'questions', report.questionId);
+                const questionDoc = await getDoc(questionRef);
+
+                if (questionDoc.exists()) {
+                    const data = questionDoc.data();
+                    previousSolution = data.solution || '';
+                }
+            } catch (err) {
+                console.error('Error fetching fallback solution:', err);
+            }
+        }
+
+        // Construct System Prompt
+        let finalPrompt = PROFESSOR_BASE_SYSTEM_PROMPT + '\n\n';
+
+        if (isComp) {
+            finalPrompt += COMPARISON_OVERRIDE_TEXT + '\n\n';
+        }
+
+        finalPrompt += `**Subject Unit:** ${report.questionSnapshot?.unitId || 'Unknown'} - ${report.questionSnapshot?.subjectId || 'Unknown'}\n`;
+        finalPrompt += `**Target Depth:** ${depthInstruction}\n\n`;
+
+        finalPrompt += `**USER REPORT (Why this needs fixing):**\n`;
+        finalPrompt += `Reason: ${report.reason.replace('_', ' ')}\n`;
+        finalPrompt += `User Note: "${report.description}"\n\n`;
+
+        finalPrompt += `**PREVIOUS SOLUTION (For Reference - Improve upon this):**\n`;
+        finalPrompt += `"${previousSolution || 'Not available'}"\n\n`;
+
+        finalPrompt += `**QUESTION:**\n${questionText}`;
+
+        try {
+            await navigator.clipboard.writeText(finalPrompt);
+            alert('Fix Prompt copied to clipboard!');
+        } catch (err) {
+            console.error('Failed to copy prompt:', err);
+            alert('Failed to copy prompt to clipboard');
+        }
+    };
+
+    // Reply Logic
+
+
     // Reply Logic
     const openReplyModal = (report: Report) => {
         setSelectedReport(report);
@@ -88,26 +181,29 @@ export default function ReportsPage() {
             ? `${window.location.origin}/study/${report.questionSnapshot.subjectId}?unit=${report.questionSnapshot.unitId}&question=${report.questionId}`
             : 'N/A';
 
-        const template = `Hi there,
+        const template = `Hi,
 
-Thanks for reaching out! I've looked into your report regarding "${report.reason.replace('_', ' ')}".
+Thanks for reaching out regarding your report on Saraav.
 
 [ WRITE YOUR REPLY HERE ]
 
---------------------------------------------------
-Your Original Report:
-• ID: ${report.id.slice(0, 8)}
-• Note: "${report.description}"
-• Question Preview: "${report.questionSnapshot?.text ? report.questionSnapshot.text.substring(0, 60) + '...' : 'N/A'}"
-
-You can view the question here:
-${questionLink}
-
-Thanks for helping make Saraav better!
-
 Best regards,
 Saurabh
-Founder, Saraav`;
+Saraav Team
+
+__________________________________________________
+Reference Case ID: ${report.id.slice(0, 8)}
+
+USER REPORT:
+Reason: ${report.reason.replace('_', ' ')}
+Note: "${report.description}"
+
+QUESTION DETAILS:
+Link: ${questionLink}
+
+Preview:
+"${report.questionSnapshot?.text ? report.questionSnapshot.text.substring(0, 100).replace(/\n/g, ' ') + '...' : 'N/A'}"
+__________________________________________________`;
 
         setReplyMessage(template);
         setReplyModalOpen(true);
@@ -117,7 +213,7 @@ Founder, Saraav`;
         if (!selectedReport) return;
 
         const recipient = selectedReport.userEmail || '';
-        const subject = `Update regarding your report on Saraav (ID: ${selectedReport.id.slice(0, 8)})`;
+        const subject = `Regarding your report on Saraav`;
         const body = replyMessage;
 
         const gmailUrl = `https://mail.google.com/mail/?authuser=saraav.connect@gmail.com&view=cm&fs=1&to=${encodeURIComponent(recipient)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -282,6 +378,15 @@ Founder, Saraav`;
                                     >
                                         <Mail className="h-4 w-4" />
                                         Reply via Email
+                                    </button>
+
+                                    {/* Copy Prompt Button */}
+                                    <button
+                                        onClick={() => handleCopyPrompt(report)}
+                                        className="hidden md:flex w-full items-center justify-center gap-2 rounded-lg bg-white border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 shadow-sm dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                                    >
+                                        <Clipboard className="h-4 w-4" />
+                                        Copy Answer Prompt
                                     </button>
 
                                     <div className="flex flex-col gap-2 w-full">
