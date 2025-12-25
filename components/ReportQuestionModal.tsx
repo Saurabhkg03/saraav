@@ -13,6 +13,7 @@ interface ReportQuestionModalProps {
     questionText: string; // For context/snapshot
     subjectId?: string;
     unitId?: string;
+    solution?: string;
 }
 
 const REASONS: { value: ReportReason; label: string }[] = [
@@ -28,7 +29,8 @@ export function ReportQuestionModal({
     questionId,
     questionText,
     subjectId,
-    unitId
+    unitId,
+    solution
 }: ReportQuestionModalProps) {
     const { user } = useAuth();
     const [reason, setReason] = useState<ReportReason>('wrong_answer');
@@ -55,6 +57,7 @@ export function ReportQuestionModal({
                 createdAt: Date.now(),
                 questionSnapshot: {
                     text: questionText,
+                    solution,
                     ...(subjectId ? { subjectId } : {}),
                     ...(unitId ? { unitId } : {})
                 }

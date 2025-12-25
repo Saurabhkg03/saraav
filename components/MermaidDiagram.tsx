@@ -52,6 +52,14 @@ export default function MermaidDiagram({ content }: MermaidDiagramProps) {
                     }
                 );
 
+                // Fix: Force quote ALL edge labels to prevent mismatched parens/chars errors
+                // Matches >|Text| and converts to >|"Text"|
+                // This covers -->|Text| and -.->|Text| etc.
+                sanitizedContent = sanitizedContent.replace(
+                    /(\>\|)([^"\|\n]+?)(\|)/g,
+                    '$1"$2"$3'
+                );
+
                 // Generate unique ID for every render to avoid collisions
                 const uniqueId = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
 

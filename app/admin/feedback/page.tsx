@@ -121,23 +121,24 @@ export default function FeedbackPage() {
     const openReplyModal = (feedback: Feedback) => {
         setSelectedFeedback(feedback);
 
-        const template = `Hi there,
+        const template = `Hi,
 
-Thanks for reaching out! I've read your ${feedback.category} feedback.
+Thanks for your ${feedback.category} feedback!
 
-[ WRITE YOUR REPLY HERE ]
-
---------------------------------------------------
-Your Original Feedback:
-• Category: ${feedback.category}
-• Message: "${feedback.message}"
-${feedback.url ? `• From: ${feedback.url}` : ''}
-
-Thanks for helping make Saraav better!
+The issue has been resolved. If you have any other feedback, please let us know.
 
 Best regards,
 Saurabh
-Founder, Saraav`;
+Saraav Team
+
+__________________________________________________
+Reference Case ID: ${feedback.id.slice(0, 8)}
+
+USER FEEDBACK:
+Category: ${feedback.category}
+Message: "${feedback.message}"
+${feedback.url ? `Source: ${feedback.url}` : ''}
+__________________________________________________`;
 
         setReplyMessage(template);
         setReplyModalOpen(true);

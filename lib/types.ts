@@ -109,5 +109,10 @@ export interface Report {
         text: string;
         subjectId?: string; // To help admin locate it
         unitId?: string;
+        history?: {
+            year: string;
+            marks: string;
+        }[];
+        solution?: string;
     }
 }
