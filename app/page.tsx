@@ -20,6 +20,53 @@ export default function Dashboard() {
     return branchSubjects.reduce((acc, subject) => {
       const branch = (subject.branch || "General").trim();
       const semester = subject.semester || "All Semesters";
+
+      // Special logic for 1st Year subjects (regardless of stored semester)
+      // Check if it's a 1st year subject: branch is 'First Year' OR semester implies it
+      const isFirstYear = branch === 'First Year' || semester === 'Semester 1' || semester === 'Semester 2' || semester === 'First Year';
+
+      if (isFirstYear) {
+        // Determine target bundles
+        const targets = [];
+
+        const isGroupA = subject.group === 'A';
+        const isGroupB = subject.group === 'B';
+        const isCommon = subject.isCommon;
+
+        if (isGroupA || isCommon) targets.push('FirstYear-GroupA');
+        if (isGroupB || isCommon) targets.push('FirstYear-GroupB');
+
+        // Fallback: If no group assigned but is 1st year, maybe assign to both or a "General" bucket? 
+        // Assuming user will tag them. If not tagged, let's put in 'FirstYear-General' or both?
+        // Let's assume they are tagged or common. If neither, we might miss them. 
+        // Let's default unlabeled to BOTH for visibility? Or 'General'.
+        if (!isGroupA && !isGroupB && !isCommon) {
+          targets.push('FirstYear-General');
+        }
+
+        targets.forEach(key => {
+          if (!acc[key]) {
+            acc[key] = {
+              id: key,
+              branch: key.includes('GroupA') ? 'First Year - Group A' : (key.includes('GroupB') ? 'First Year - Group B' : 'First Year'),
+              semester: 'First Year', // Uniform semester label
+              subjects: [],
+              totalPrice: 0,
+              totalOriginalPrice: 0,
+              subjectCount: 0,
+              isSynthetic: true
+            };
+          }
+          acc[key].subjects.push(subject);
+          acc[key].totalPrice += subject.price || 0;
+          acc[key].totalOriginalPrice += subject.originalPrice || subject.price || 0;
+          acc[key].subjectCount++;
+        });
+
+        return acc;
+      }
+
+      // Standard logic for items NOT in 1st Year
       const key = `${branch}-${semester}`;
 
       if (!acc[key]) {
@@ -47,15 +94,32 @@ export default function Dashboard() {
 
   // 2. Featured Bundles: Valid for User's Branch, Prioritized by Year
   const featuredBundles = useMemo(() => {
+    // Special handling for 1st Year: Show BOTH Group A and Group B bundles
+    // Special handling for 1st Year: USE THE SHARED BUNDLES from allBundlesList
+    if (userYear === '1st Year') {
+      const aggrBundles = allBundlesList.filter(b => b.id === 'FirstYear-GroupA' || b.id === 'FirstYear-GroupB');
+
+      // If we found them in the aggregated list, use them.
+      if (aggrBundles.length > 0) {
+        return aggrBundles;
+      }
+
+      // Fallback: If for some reason they aren't in allBundlesList (empty data?), we return empty
+      return [];
+    }
+
+
+    // Standard Logic for other years
     return allBundlesList
       .filter(bundle => {
         if (!userBranch) return true;
+
         const normalizedUserBranch = userBranch.trim();
-        // Allow partial match for "Electrical" vs "Electrical Engineering" mismatch
-        // or just looser matching in general provided it starts with the string.
-        return bundle.branch === normalizedUserBranch ||
+        const branchMatches = bundle.branch === normalizedUserBranch ||
           bundle.branch === "General" ||
           (normalizedUserBranch.includes("Electrical") && bundle.branch.includes("Electrical"));
+
+        return branchMatches;
       })
       .sort((a, b) => {
         if (!userYear) return 0;
@@ -80,7 +144,54 @@ export default function Dashboard() {
         const semB = parseInt(b.semester.replace(/\D/g, '')) || 0;
         return semA - semB;
       });
-  }, [allBundlesList, userBranch, userYear]);
+  }, [allBundlesList, userBranch, userYear, branchSubjects]);
+
+  // For 1st year, `featuredBundles` is ALREADY the final list.
+  // For others, we might want to apply the same subject filtering? No, other years are branch-locked.
+
+  const finalFeaturedBundles = featuredBundles;
+  /*
+    // OLD LOGIC REMOVED
+    const finalFeaturedBundles = useMemo(() => {
+       return featuredBundles.map(bundle => {
+          // Only filter contents for 1st Year Sem 1/2
+          if (userYear === '1st Year' && (bundle.semester === 'Semester 1' || bundle.semester === 'Semester 2') && userBranch) {
+            const normalizedUserBranch = userBranch.trim();
+            const isGroupABranch = ['Computer Science', 'Information Technology', 'Electrical'].some(b => normalizedUserBranch.includes(b));
+            const isGroupBBranch = ['Mechanical', 'Electronics', 'ENTC'].some(b => normalizedUserBranch.includes(b));
+   
+            let userTargetGroup: 'A' | 'B' | null = null;
+            if (bundle.semester === 'Semester 1') {
+              if (isGroupABranch) userTargetGroup = 'A';
+              else if (isGroupBBranch) userTargetGroup = 'B';
+            } else if (bundle.semester === 'Semester 2') {
+              if (isGroupABranch) userTargetGroup = 'B';
+              else if (isGroupBBranch) userTargetGroup = 'A';
+            }
+   
+            if (userTargetGroup) {
+              const filteredSubjects = bundle.subjects.filter((s: any) => {
+                if (s.group) return s.group === userTargetGroup;
+                if (s.isCommon) return true;
+                // If subject matches user branch explicitly (Legacy fallback)
+                if (s.branch === normalizedUserBranch) return true;
+                return false;
+              });
+   
+              // Return modified bundle with filtered subjects
+              // Recalculate counts/prices if needed? 
+              // For display simplicity, we just update the list.
+              return {
+                ...bundle,
+                subjects: filteredSubjects,
+                subjectCount: filteredSubjects.length
+              };
+            }
+          }
+          return bundle;
+       }).filter(b => b.subjects.length > 0); // Remove empty bundles after filtering
+    }, [featuredBundles, userYear, userBranch]);
+  */
 
   // 3. All Bundles: Everything, sorted by Branch then Semester
   const allBundlesDisplay = useMemo(() => {
@@ -303,7 +414,7 @@ export default function Dashboard() {
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 
-          {featuredBundles.length === 0 ? (
+          {finalFeaturedBundles.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
               <p className="text-zinc-500 dark:text-zinc-400">
                 No bundles found for you ({userBranch || "None"}).
@@ -313,7 +424,7 @@ export default function Dashboard() {
               </Link>
             </div>
           ) : (
-            featuredBundles.map((bundle: any) => (
+            finalFeaturedBundles.map((bundle: any) => (
               <Link
                 key={bundle.id}
                 href={`/marketplace/semester/${encodeURIComponent(bundle.id)}`}
@@ -328,6 +439,11 @@ export default function Dashboard() {
                     "flex h-full w-full flex-col items-center justify-center bg-gradient-to-br p-6 text-center",
                     getColorClass(bundle.branch)
                   )}>
+                    {(bundle.semester === 'First Year' || bundle.branch.includes('First Year')) && (
+                      <div className="absolute left-0 top-0 z-20 rounded-br-2xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-600 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider text-white shadow-[0_0_15px_rgba(192,38,211,0.5)] border-b border-r border-white/20 backdrop-blur-md">
+                        ✨ According to NEP Syllabus
+                      </div>
+                    )}
                     <p className="mb-1 text-lg font-medium text-white opacity-90">
                       {bundle.semester}
                     </p>
@@ -405,13 +521,14 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex flex-1 flex-col p-6">
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                    {bundle.semester} Bundle
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    {/* If synthetic, title is like "Semester 1 - Group A", so we can just show that, or show Branch if normal */}
+                    {bundle.isSynthetic ? bundle.branch : bundle.branch}
+                  </h3>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {bundle.semester}
                   </p>
-                  <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">
-                    {bundle.branch}
-                  </h4>
                 </div>
 
                 <div className="mt-auto flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">

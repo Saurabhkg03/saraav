@@ -8,10 +8,51 @@ async function getBundles(): Promise<any[]> {
     try {
         const snapshot = await adminDb.collection("bundles").get();
         if (!snapshot.empty) {
-            return snapshot.docs.map(doc => ({
+            let bundles = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
-            }));
+            })) as any[];
+
+            // Post-processing: Split "First Year" into Group A and Group B
+            const firstYearBundleIndex = bundles.findIndex(b => b.branch === 'First Year' || b.id === 'First Year-First Year');
+
+            if (firstYearBundleIndex !== -1) {
+                const fyBundle = bundles[firstYearBundleIndex];
+                const fySubjects = fyBundle.subjects || [];
+
+                // Group A
+                const subjectsA = fySubjects.filter((s: any) => s.group === 'A' || s.isCommon);
+                const bundleA = {
+                    ...fyBundle,
+                    id: 'FirstYear-GroupA',
+                    branch: 'First Year - Group A',
+                    semester: 'First Year', // Keep consistent
+                    subjects: subjectsA,
+                    title: 'First Year - Group A',
+                    subjectCount: subjectsA.length,
+                    totalPrice: subjectsA.reduce((sum: number, s: any) => sum + (s.price || 0), 0),
+                    totalOriginalPrice: subjectsA.reduce((sum: number, s: any) => sum + (s.originalPrice || s.price || 0), 0)
+                };
+
+                // Group B
+                const subjectsB = fySubjects.filter((s: any) => s.group === 'B' || s.isCommon);
+                const bundleB = {
+                    ...fyBundle,
+                    id: 'FirstYear-GroupB',
+                    branch: 'First Year - Group B',
+                    semester: 'First Year',
+                    subjects: subjectsB,
+                    title: 'First Year - Group B',
+                    subjectCount: subjectsB.length,
+                    totalPrice: subjectsB.reduce((sum: number, s: any) => sum + (s.price || 0), 0),
+                    totalOriginalPrice: subjectsB.reduce((sum: number, s: any) => sum + (s.originalPrice || s.price || 0), 0)
+                };
+
+                // Remove original, add new ones
+                bundles.splice(firstYearBundleIndex, 1, bundleA, bundleB);
+            }
+
+            return bundles;
         }
 
         console.log("Bundles collection empty. Attempting fallback generation...");

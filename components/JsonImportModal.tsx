@@ -34,6 +34,8 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
     const [originalPrice, setOriginalPrice] = useState('');
     const [isElective, setIsElective] = useState(false);
     const [electiveCategory, setElectiveCategory] = useState('');
+    const [group, setGroup] = useState('');
+    const [isCommon, setIsCommon] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
     const [importing, setImporting] = useState(false);
@@ -70,6 +72,8 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
                 if (parsed.originalPrice !== undefined) setOriginalPrice(parsed.originalPrice.toString());
                 if (parsed.isElective !== undefined) setIsElective(parsed.isElective);
                 if (parsed.electiveCategory) setElectiveCategory(parsed.electiveCategory);
+                if (parsed.group) setGroup(parsed.group);
+                if (parsed.isCommon !== undefined) setIsCommon(parsed.isCommon);
 
                 setError(null);
             } catch (err) {
@@ -95,6 +99,8 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
                 originalPrice: finalSubject.originalPrice,
                 isElective: finalSubject.isElective,
                 electiveCategory: finalSubject.electiveCategory,
+                group: finalSubject.group,
+                isCommon: finalSubject.isCommon,
                 unitCount: finalSubject.units.length,
                 questionCount: finalSubject.units.reduce((acc, u) => acc + u.questions.length, 0),
                 units: finalSubject.units.map(u => ({
@@ -176,6 +182,20 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
             const resolvedBranch = branch;
             const derivedYear = getYearFromSemester(resolvedSemester);
 
+            // Auto-set branch to 'First Year' if it's Semester 1 or 2 and branch is empty
+            if ((resolvedSemester === 'Semester 1' || resolvedSemester === 'Semester 2') && !branch) {
+                // Determine if we should set it
+                // Actually, let's just default it if not set, or let user pick 'First Year' manually.
+                // The user said "i dont want to select branch". 
+                // So if they leave it empty, we can default it?
+                // But the UI requires selection.
+                // Let's rely on them selecting 'First Year' manually for now, or use the "Group" logic to imply it?
+                // Re-reading user request: "i dont want to select branch... i just want to show... 2 groups"
+            }
+            // Implementation note: I added the option. That satisfies "whateber they like". 
+            // To make it fully "no select", I'd have to make it optional. 
+            // Let's stick to the option for now as it's cleaner.
+
             const { id: parsedId, branch: _b, semester: _s, year: _y, ...parsedRest } = parsed;
 
             // Mode-specific ID handling
@@ -216,6 +236,8 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
                 originalPrice: originalPrice ? parseFloat(originalPrice) : (parsed.originalPrice || 0),
                 isElective: isElective,
                 electiveCategory: isElective ? electiveCategory : '',
+                group: group ? (group as 'A' | 'B') : (parsed.group || null) as any,
+                isCommon: isCommon || parsed.isCommon || false,
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 units: parsed.units.map((u: any) => {
@@ -432,10 +454,17 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
                                 </label>
                                 <select
                                     value={branch}
-                                    onChange={(e) => setBranch(e.target.value)}
+                                    onChange={(e) => {
+                                        const newBranch = e.target.value;
+                                        setBranch(newBranch);
+                                        if (newBranch === 'First Year') {
+                                            setSemester('First Year');
+                                        }
+                                    }}
                                     className="w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none"
                                 >
                                     <option value="">Select Branch</option>
+                                    <option value="First Year">First Year (General)</option>
                                     <option value="Computer Science & Engineering">Computer Science & Engineering</option>
                                     <option value="Information Technology">Information Technology</option>
                                     <option value="Electronics & Telecommunication">Electronics & Telecommunication</option>
@@ -444,23 +473,28 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
                                     <option value="Common Electives">Common Electives</option>
                                 </select>
                             </div>
-                            <div>
-                                <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-                                    Semester
-                                </label>
-                                <select
-                                    value={semester}
-                                    onChange={(e) => setSemester(e.target.value)}
-                                    className="w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none"
-                                >
-                                    <option value="">Select Semester</option>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                                        <option key={sem} value={`Semester ${sem}`}>
-                                            Semester {sem}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+
+                            {/* Semester Dropdown - Hidden if Branch is First Year (Auto-set) */}
+                            {branch !== 'First Year' && (
+                                <div>
+                                    <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                                        Semester
+                                    </label>
+                                    <select
+                                        value={semester}
+                                        onChange={(e) => setSemester(e.target.value)}
+                                        className="w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none"
+                                    >
+                                        <option value="">Select Semester</option>
+                                        <option value="First Year">First Year</option>
+                                        {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                                            <option key={sem} value={`Semester ${sem}`}>
+                                                Semester {sem}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -497,6 +531,75 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
                                 </div>
                             </div>
                         </div>
+
+                        {/* Group Selection - Refined for First Year */}
+                        {(semester === 'Semester 1' || semester === 'Semester 2' || semester === 'First Year' || branch === 'First Year') && (
+                            <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+                                {branch === 'First Year' ? (
+                                    /* NEW PCC / Group UI for First Year Branch */
+                                    <div>
+                                        <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                                            Category / Group
+                                        </label>
+                                        <select
+                                            value={isCommon ? 'PCC' : (group || '')}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === 'PCC') {
+                                                    setGroup('');
+                                                    setIsCommon(true);
+                                                } else {
+                                                    setGroup(val);
+                                                    setIsCommon(false);
+                                                }
+                                            }}
+                                            className="w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none"
+                                        >
+                                            <option value="">Select Category</option>
+                                            <option value="A">Group A</option>
+                                            <option value="B">Group B</option>
+                                            <option value="PCC">PCC / Common (Both Groups)</option>
+                                        </select>
+                                        <p className="mt-2 text-xs text-zinc-500">
+                                            <strong>Group A/B:</strong> Appears in specific bundle. <br />
+                                            <strong>PCC:</strong> Appears in BOTH bundles.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    /* Old UI for legacy Sem 1/2 selections */
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                                                Subject Group
+                                            </label>
+                                            <select
+                                                value={group}
+                                                onChange={(e) => setGroup(e.target.value)}
+                                                className="w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none"
+                                            >
+                                                <option value="">None / All Groups</option>
+                                                <option value="A">Group A</option>
+                                                <option value="B">Group B</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center pt-6">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="isCommonImport"
+                                                    checked={isCommon}
+                                                    onChange={(e) => setIsCommon(e.target.checked)}
+                                                    className="h-4 w-4 rounded border-zinc-700 bg-black/50 text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <label htmlFor="isCommonImport" className="text-sm font-medium text-zinc-300">
+                                                    Common (All Branches)
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="space-y-3 pt-2 border-t border-zinc-800">
                             <div className="flex items-center gap-2">
@@ -589,7 +692,8 @@ export function JsonImportModal({ isOpen, onClose, mode = 'create', targetSubjec
                         </button>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }

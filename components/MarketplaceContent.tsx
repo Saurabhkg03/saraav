@@ -150,7 +150,12 @@ export function MarketplaceContent({ initialBundles }: { initialBundles: any[] }
                                 href={`/marketplace/semester/${encodeURIComponent(bundle.id)}`}
                                 className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-zinc-300 bg-white transition-all hover:shadow-lg dark:border dark:border-zinc-800 dark:bg-zinc-900"
                             >
-                                <div className={`flex min-h-[9rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center ${getColorClass(bundle.branch)}`}>
+                                <div className={`flex min-h-[9rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center ${getColorClass(bundle.branch)} relative`}>
+                                    {(bundle.semester === 'First Year' || bundle.branch.includes('First Year')) && (
+                                        <div className="absolute left-0 top-0 z-20 rounded-br-2xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-600 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider text-white shadow-[0_0_15px_rgba(192,38,211,0.5)] border-b border-r border-white/20 backdrop-blur-md">
+                                            ✨ According to NEP Syllabus
+                                        </div>
+                                    )}
                                     <p className="mb-1 text-sm font-medium text-white opacity-90">
                                         {bundle.semester}
                                     </p>
