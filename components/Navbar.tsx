@@ -123,7 +123,7 @@ export function Navbar() {
 
                         <Link
                             href="/marketplace"
-                            className="group flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md hover:opacity-90"
+                            className="group flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-1.5 text-sm font-medium text-white dark:text-black shadow-sm transition-all hover:shadow-md hover:opacity-90"
                         >
                             <LayoutDashboard className="h-3.5 w-3.5" />
                             <span>Browse Courses</span>
@@ -230,7 +230,7 @@ export function Navbar() {
                             <Link
                                 href="/marketplace"
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm"
+                                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-sm font-medium text-white dark:text-black shadow-sm"
                             >
                                 <LayoutDashboard className="h-4 w-4" />
                                 Browse Courses

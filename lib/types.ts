@@ -38,6 +38,8 @@ export type Subject = {
     originalPrice?: number;
     isElective?: boolean;
     electiveCategory?: string; // e.g., "Elective I", "Elective II"
+    group?: 'A' | 'B'; // For 1st Year: Group A or Group B
+    isCommon?: boolean; // For Common subjects like PCC
     units: Unit[];
 };
 
@@ -58,6 +60,8 @@ export interface SubjectMetadata {
     originalPrice?: number;
     isElective?: boolean;
     electiveCategory?: string;
+    group?: 'A' | 'B';
+    isCommon?: boolean;
     unitCount: number;
     questionCount: number;
     units: UnitSummary[]; // Lightweight summary for initial load

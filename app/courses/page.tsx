@@ -76,30 +76,72 @@ function MyCoursesContent() {
 
     // Derived State: Sorted Bundles by Latest Purchase
     const sortedBundles = useMemo(() => {
-        // Group by Bundle ID (Branch + Semester)
-        const groups = myCourses.reduce((acc, subject) => {
+        // First Pass: Group by Standard Key
+        const rawGroups = myCourses.reduce((acc, subject) => {
             const branch = subject.branch || 'General';
             const semester = subject.semester || 'Other';
 
-            // Create a unique key for the bundle
-            // If "Common Electives", it might need special handling, but let's treat it as a bundle for now
+            // Standard Key
             const bundleKey = `${branch}-${semester}`;
 
             if (!acc[bundleKey]) {
                 acc[bundleKey] = {
+                    key: bundleKey,
                     branch,
                     semester,
                     subjects: [],
                     lastPurchased: 0
                 };
             }
-
             acc[bundleKey].subjects.push(subject);
             return acc;
-        }, {} as Record<string, { branch: string; semester: string; subjects: SubjectMetadata[]; lastPurchased: number }>);
+        }, {} as Record<string, { key: string; branch: string; semester: string; subjects: SubjectMetadata[]; lastPurchased: number }>);
 
-        // Calculate last purchased time for each bundle
-        Object.values(groups).forEach(group => {
+        // Second Pass: Split First Year if needed
+        const processedGroups: typeof rawGroups = {};
+
+        Object.values(rawGroups).forEach(group => {
+            // Check if this is the generic First Year bundle
+            if (group.branch === 'First Year' || group.semester === 'First Year') {
+                const subjectsA = group.subjects.filter(s => s.group === 'A');
+                const subjectsB = group.subjects.filter(s => s.group === 'B');
+                const subjectsCommon = group.subjects.filter(s => s.isCommon);
+
+                // Heuristic: Create Bundle A if specific A subjects exist, OR if we have only Common subjects (Default to A)
+                const shouldCreateA = subjectsA.length > 0 || (subjectsA.length === 0 && subjectsB.length === 0 && subjectsCommon.length > 0);
+
+                // Heuristic: Create Bundle B only if specific B subjects exist
+                const shouldCreateB = subjectsB.length > 0;
+
+                if (shouldCreateA) {
+                    const keyA = 'FirstYear-GroupA';
+                    processedGroups[keyA] = {
+                        key: keyA,
+                        branch: 'First Year - Group A',
+                        semester: 'First Year',
+                        subjects: [...subjectsA, ...subjectsCommon],
+                        lastPurchased: 0
+                    };
+                }
+
+                if (shouldCreateB) {
+                    const keyB = 'FirstYear-GroupB';
+                    processedGroups[keyB] = {
+                        key: keyB,
+                        branch: 'First Year - Group B',
+                        semester: 'First Year',
+                        subjects: [...subjectsB, ...subjectsCommon],
+                        lastPurchased: 0
+                    };
+                }
+            } else {
+                // Pass through other bundles
+                processedGroups[group.key] = group;
+            }
+        });
+
+        // Calculate last purchased time
+        Object.values(processedGroups).forEach(group => {
             let maxTime = 0;
             group.subjects.forEach(c => {
                 const time = purchases?.[c.id]?.purchaseDate || 0;
@@ -108,12 +150,9 @@ function MyCoursesContent() {
             group.lastPurchased = maxTime;
         });
 
-        // Sort Bundles
-        return Object.entries(groups).sort(([, a], [, b]) => {
-            // 1. By Latest Purchase Time
+        // Sort
+        return Object.entries(processedGroups).sort(([, a], [, b]) => {
             if (a.lastPurchased !== b.lastPurchased) return b.lastPurchased - a.lastPurchased;
-
-            // 2. By Semester Number (Fallback)
             const getNum = (sem: string) => {
                 const match = sem.match(/\d+/);
                 return match ? parseInt(match[0], 10) : 999;
@@ -383,7 +422,7 @@ function MyCoursesContent() {
                     })}
                 </div>
             ) : (
-                // VIEW 2: Specific Bundle (Core + Elective Folders)
+                // VIEW 2: Specific Bundle (Core + Elective Folders + PCC Folders)
                 <div className="space-y-12">
                     {/* Header for the open bundle */}
                     {(() => {
@@ -406,39 +445,81 @@ function MyCoursesContent() {
                             const semesterCourses = bundleData.subjects;
                             const activeCategory = expandedFolder?.semester === viewingSemester ? expandedFolder.category : null;
 
-                            // Filter Logic
-                            const displayedCourses = activeCategory
-                                ? semesterCourses.filter(s => s.isElective && s.electiveCategory === activeCategory)
-                                : semesterCourses.filter(s => !s.isElective);
+                            // 1. Collect Categories
+                            const electiveCategories = Array.from(new Set(
+                                semesterCourses
+                                    .filter(s => s.isElective && s.electiveCategory)
+                                    .map(s => s.electiveCategory)
+                            ));
 
-                            const electiveCategories = activeCategory
-                                ? []
-                                : Array.from(new Set(semesterCourses.filter(s => s.isElective && s.electiveCategory).map(s => s.electiveCategory)));
+                            // 2. Check for PCC Subjects
+                            const hasPCC = semesterCourses.some(s => s.isCommon);
+                            if (hasPCC) {
+                                // Add "PCC Subjects" pseudo-category if not already there
+                                // We treat "PCC Subjects" as a category key
+                            }
+
+                            // 3. Filter displayed courses (Inside a folder or Root)
+                            let displayedCourses: SubjectMetadata[] = [];
+
+                            if (activeCategory === 'PCC Subjects') {
+                                displayedCourses = semesterCourses.filter(s => s.isCommon);
+                            } else if (activeCategory) {
+                                displayedCourses = semesterCourses.filter(s => s.isElective && s.electiveCategory === activeCategory);
+                            } else {
+                                // Root View: Show only Core (Non-Elective AND Non-Common)
+                                displayedCourses = semesterCourses.filter(s => !s.isElective && !s.isCommon);
+                            }
 
                             return (
                                 <>
-                                    {/* Elective Folders */}
-                                    {electiveCategories.map((category) => (
-                                        <div
-                                            key={category}
-                                            onClick={() => setExpandedFolder({ semester: viewingSemester, category: category as string })}
-                                            className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border-2 border-zinc-300 bg-zinc-50 transition-all hover:border-indigo-500 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500"
-                                        >
-                                            <div className="flex h-32 items-center justify-center bg-indigo-100 dark:bg-zinc-800">
-                                                <BookOpen className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
-                                            </div>
-                                            <div className="flex flex-1 flex-col p-5">
-                                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                                    {category}
-                                                </h3>
-                                                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                                    {semesterCourses.filter(s => s.electiveCategory === category).length} Subjects
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    {/* Folders (Only show in Root View i.e. no activeCategory) */}
+                                    {!activeCategory && (
+                                        <>
+                                            {/* Elective Folders */}
+                                            {electiveCategories.map((category) => (
+                                                <div
+                                                    key={category}
+                                                    onClick={() => setExpandedFolder({ semester: viewingSemester, category: category as string })}
+                                                    className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border-2 border-zinc-300 bg-zinc-50 transition-all hover:border-indigo-500 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500"
+                                                >
+                                                    <div className="flex h-32 items-center justify-center bg-indigo-100 dark:bg-zinc-800">
+                                                        <BookOpen className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
+                                                    </div>
+                                                    <div className="flex flex-1 flex-col p-5">
+                                                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                                                            {category}
+                                                        </h3>
+                                                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                                            {semesterCourses.filter(s => s.electiveCategory === category).length} Subjects
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
 
-                                    {/* Subjects - Sorted by Latest Purchase for inside view too */}
+                                            {/* PCC Folder */}
+                                            {hasPCC && (
+                                                <div
+                                                    onClick={() => setExpandedFolder({ semester: viewingSemester, category: 'PCC Subjects' })}
+                                                    className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border-2 border-zinc-300 bg-zinc-50 transition-all hover:border-indigo-500 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500"
+                                                >
+                                                    <div className="flex h-32 items-center justify-center bg-indigo-100 dark:bg-zinc-800">
+                                                        <BookOpen className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
+                                                    </div>
+                                                    <div className="flex flex-1 flex-col p-5">
+                                                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                                                            PCC Subjects
+                                                        </h3>
+                                                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                                            {semesterCourses.filter(s => s.isCommon).length} Subjects
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* Subject Cards */}
                                     {displayedCourses
                                         .sort((a, b) => {
                                             const timeA = purchases?.[a.id]?.purchaseDate || 0;

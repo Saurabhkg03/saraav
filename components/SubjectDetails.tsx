@@ -185,14 +185,21 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
                         <h2 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-100">Course Content</h2>
 
                         {/* Locked Content Preview */}
-                        <div className="mb-8 rounded-xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900/50">
+                        <div className={`mb-8 rounded-xl border p-6 ${isPurchased ? 'border-green-200 bg-green-50 dark:border-green-900/30 dark:bg-green-900/10' : 'border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50'}`}>
                             <div className="flex items-center gap-3 text-zinc-900 dark:text-zinc-100">
-                                <Lock className="h-5 w-5 text-zinc-400" />
+                                {isPurchased ? <BookOpen className="h-5 w-5 text-green-600 dark:text-green-400" /> : <Lock className="h-5 w-5 text-zinc-400" />}
                                 <span className="font-semibold">Practice Questions & Solutions</span>
-                                <span className="ml-auto rounded-full bg-zinc-200 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">Locked</span>
+                                {isPurchased ? (
+                                    <span className="ml-auto rounded-full bg-green-200 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">Unlocked</span>
+                                ) : (
+                                    <span className="ml-auto rounded-full bg-zinc-200 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">Locked</span>
+                                )}
                             </div>
-                            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                                Purchase this course to unlock {metadata.questionCount} practice questions with detailed expert solutions.
+                            <p className={`mt-2 text-sm ${isPurchased ? 'text-green-700 dark:text-green-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                                {isPurchased ?
+                                    `You have full access to all ${metadata.questionCount} practice questions and solutions.` :
+                                    `Purchase this course to unlock ${metadata.questionCount} practice questions with detailed expert solutions.`
+                                }
                             </p>
                         </div>
 

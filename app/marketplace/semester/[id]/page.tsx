@@ -36,11 +36,47 @@ export default function SemesterBundlePage() {
     useEffect(() => {
         const fetchBundle = async () => {
             try {
-                const { getDoc, doc, getFirestore } = await import("firebase/firestore");
+                const { getDoc, doc, getFirestore, collection, query, where, getDocs } = await import("firebase/firestore");
                 const db = getFirestore();
+
+                // Special handling for synthetic 1st Year bundles
+                if (bundleId === 'FirstYear-GroupA' || bundleId === 'FirstYear-GroupB') {
+                    // Fetch all 1st year subjects
+                    // We need subjects from Sem 1, Sem 2, or First Year
+                    // OR just fetch all and filter client side if the dataset is small (subjects_metadata)
+                    // Better: Fetch by 'semester' IN [...] if possible, or multiple queries.
+                    // Firestore 'in' query works for 'semester'.
+
+                    const q = query(
+                        collection(db, "subjects_metadata"),
+                        where('semester', 'in', ['Semester 1', 'Semester 2', 'First Year'])
+                    );
+
+                    const snap = await getDocs(q);
+                    const allFirstYear = snap.docs.map(d => ({ id: d.id, ...d.data() } as SubjectMetadata));
+
+                    const targetGroup = bundleId === 'FirstYear-GroupA' ? 'A' : 'B';
+
+                    const validSubjects = allFirstYear.filter(s => s.group === targetGroup || s.isCommon);
+
+                    if (validSubjects.length > 0) {
+                        setBundleData({
+                            branch: `First Year - Group ${targetGroup}`,
+                            semester: 'First Year',
+                            subjects: validSubjects
+                        });
+                        return; // Done
+                    }
+                }
+
+                // Standard fetch for normal bundles
                 const snap = await getDoc(doc(db, "bundles", bundleId));
                 if (snap.exists()) {
                     setBundleData(snap.data() as BundleData);
+                } else {
+                    // Fallback: If bundle doc is missing but subjects exist (Legacy/Migration issue?)
+                    // Maybe we can try to reconstruct it? 
+                    // For now, if not found and not special, it's not found.
                 }
             } catch (e) {
                 console.error("Failed to fetch bundle", e);
@@ -147,23 +183,38 @@ export default function SemesterBundlePage() {
                         )}
 
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {/* View: Specific Elective Folder */}
+                            {/* View: Specific Elective Folder OR PCC Folder */}
                             {viewingCategory ? (
-                                bundleSubjects
-                                    .filter(s => s.isElective && s.electiveCategory === viewingCategory)
-                                    .map(subject => (
-                                        <SubjectCard
-                                            key={subject.id}
-                                            subject={subject}
-                                            href={`/marketplace/${subject.id}`}
-                                            actionLabel="View Details"
-                                        />
-                                    ))
+                                viewingCategory === 'PCC Subjects' ? (
+                                    /* 1. View PCC Subjects */
+                                    bundleSubjects
+                                        .filter(s => s.isCommon)
+                                        .map(subject => (
+                                            <SubjectCard
+                                                key={subject.id}
+                                                subject={subject}
+                                                href={`/marketplace/${subject.id}`}
+                                                actionLabel="View Details"
+                                            />
+                                        ))
+                                ) : (
+                                    /* 2. View Specific Elective Category */
+                                    bundleSubjects
+                                        .filter(s => s.isElective && s.electiveCategory === viewingCategory)
+                                        .map(subject => (
+                                            <SubjectCard
+                                                key={subject.id}
+                                                subject={subject}
+                                                href={`/marketplace/${subject.id}`}
+                                                actionLabel="View Details"
+                                            />
+                                        ))
+                                )
                             ) : (
                                 /* View: Top Level (Core + Folders) */
                                 <>
-                                    {/* 1. Core Subjects */}
-                                    {bundleSubjects.filter(s => !s.isElective).map(subject => (
+                                    {/* 1. Core Subjects (Non-Elective, Non-Common) */}
+                                    {bundleSubjects.filter(s => !s.isElective && !s.isCommon).map(subject => (
                                         <SubjectCard
                                             key={subject.id}
                                             subject={subject}
@@ -172,7 +223,30 @@ export default function SemesterBundlePage() {
                                         />
                                     ))}
 
-                                    {/* 2. Elective Folders */}
+                                    {/* 2. PCC / Common Folder */}
+                                    {bundleSubjects.some(s => s.isCommon) && (
+                                        <div
+                                            onClick={() => setViewingCategory('PCC Subjects')}
+                                            className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border-2 border-zinc-200 bg-zinc-50 transition-all hover:border-indigo-500 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500"
+                                        >
+                                            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+                                                <div className="mb-4 rounded-full bg-indigo-100 p-4 dark:bg-indigo-900/30">
+                                                    <BookOpen className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                                                </div>
+                                                <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                                                    PCC Subjects
+                                                </h3>
+                                                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                                                    {bundleSubjects.filter(s => s.isCommon).length} Common Core
+                                                </p>
+                                            </div>
+                                            <div className="flex w-full items-center justify-center border-t border-zinc-200 bg-white py-3 text-sm font-medium text-indigo-600 transition-colors group-hover:bg-indigo-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-indigo-400 dark:group-hover:bg-zinc-800">
+                                                View Subjects
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 3. Elective Folders */}
                                     {Array.from(new Set(
                                         bundleSubjects
                                             .filter(s => s.isElective && s.electiveCategory)

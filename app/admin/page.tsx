@@ -311,7 +311,9 @@ export default function AdminPage() {
                     branch: subject.branch,
                     semester: subject.semester,
                     isElective: subject.isElective || false,
-                    electiveCategory: subject.electiveCategory || ""
+                    electiveCategory: subject.electiveCategory || "",
+                    group: subject.group || null,
+                    isCommon: subject.isCommon || false
                 });
 
                 groups[key].totalPrice += subject.price || 0;
@@ -345,6 +347,8 @@ export default function AdminPage() {
     // Since we don't load all, we can't derive lists from 'subjects'. 
     // We'll use static lists or assume the standard ones.
     const BRANCHES = [
+        "All",
+        "First Year",
         "Computer Science & Engineering",
         "Information Technology",
         "Electronics & Telecommunication",
@@ -353,10 +357,7 @@ export default function AdminPage() {
         "Common Electives"
     ];
 
-    const SEMESTERS = [
-        "Semester 1", "Semester 2", "Semester 3", "Semester 4",
-        "Semester 5", "Semester 6", "Semester 7", "Semester 8"
-    ];
+    const SEMESTERS = ["All", "First Year", "Semester 1", "Semester 2", "Semester 3", "Semester 4", "Semester 5", "Semester 6", "Semester 7", "Semester 8"];
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-8">
