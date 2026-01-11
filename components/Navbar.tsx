@@ -2,30 +2,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { User, Sparkles, LogIn, Shield, LayoutDashboard, Menu, X, BookOpen, ChevronDown } from 'lucide-react';
+import { User, Sparkles, LogIn, Shield, LayoutDashboard, Menu, X, BookOpen, ChevronDown, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useSettings } from '@/hooks/useSettings';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Logo } from '@/components/Logo';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { NotificationDropdown } from '@/components/NotificationDropdown';
 
-const BRANCHES = [
-    "Computer Science & Engineering",
-    "Information Technology",
-    "Electronics & Telecommunication",
-    "Mechanical Engineering",
-    "Electrical Engineering"
-];
-
-const YEARS = [
-    "1st Year",
-    "2nd Year",
-    "3rd Year",
-    "4th Year"
-];
-
+import { BRANCHES, YEARS } from '@/lib/constants';
 export function Navbar() {
     const { user, loading, isAdmin, branch, year, updateProfile } = useAuth();
+    const { settings } = useSettings() as any;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
 
@@ -120,6 +108,17 @@ export function Navbar() {
                             <BookOpen className="h-4 w-4" />
                             <span>My Courses</span>
                         </Link>
+
+                        {/* Community Access Control */}
+                        {(isAdmin || settings?.isCommunityEnabled) && (
+                            <Link
+                                href="/community"
+                                className="flex items-center gap-1.5 text-sm font-medium text-zinc-600 hover:text-indigo-600 transition-colors dark:text-zinc-400 dark:hover:text-indigo-400"
+                            >
+                                <MessageSquare className="h-4 w-4" />
+                                <span>Community</span>
+                            </Link>
+                        )}
 
                         <Link
                             href="/marketplace"
@@ -226,6 +225,17 @@ export function Navbar() {
                                 <BookOpen className="h-4 w-4" />
                                 My Courses
                             </Link>
+
+                            {(isAdmin || settings?.isCommunityEnabled) && (
+                                <Link
+                                    href="/community"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50 hover:text-indigo-600 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-indigo-400"
+                                >
+                                    <MessageSquare className="h-4 w-4" />
+                                    Community
+                                </Link>
+                            )}
 
                             <Link
                                 href="/marketplace"

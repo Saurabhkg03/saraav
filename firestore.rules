@@ -103,7 +103,51 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // 5. ORDERS
+    // 5. CHANNELS
+    match /channels/{channelId} {
+      // Helper to fetch the user's profile and check branch
+      // WARNING: This costs 1 extra read per request if not cached by SDK properly, but is necessary for security.
+      function isCorrectBranch(channelData) {
+        return isSignedIn() && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch == channelData.branch;
+      }
+
+      // Read: Users can only read channels that match their branch
+      allow read: if isCorrectBranch(resource.data) || isAdmin();
+      
+      // Write: Admins can manage channels. Users CANNOT create channels (for now).
+      allow create, update, delete: if isAdmin();
+
+      // MESSAGES Sub-collection
+      match /messages/{messageId} {
+        // Parent channel data must be fetched to verify branch access for messages
+        // Since 'resource' refers to the message here, we need to get the parent channel.
+        // HOWEVER, for read/list, we rely on the parent channel read rule being satisfied? 
+        // No, in Firestore rules, access is not inherited. We must re-verify.
+        
+        function isParentChannelAccessible() {
+           return isSignedIn() && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch == 
+           get(/databases/$(database)/documents/channels/$(channelId)).data.branch;
+        }
+
+        allow read: if isParentChannelAccessible() || isAdmin();
+        
+        // Create: User must belong to the branch AND be the sender
+        allow create: if isParentChannelAccessible() && request.resource.data.senderId == request.auth.uid;
+        
+        // Update/Delete: Only sender or admin
+        allow update, delete: if (isParentChannelAccessible() && resource.data.senderId == request.auth.uid) || isAdmin();
+      }
+    }
+
+    // NEW: Message Reports
+    match /message_reports/{reportId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 6. ORDERS
     match /orders/{orderId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if isOwner(resource.data.userId) || isAdmin();

@@ -16,9 +16,8 @@ import { SubjectMetadata, Subject, Unit } from '@/lib/types';
 import { updateBundle } from '@/lib/bundleUtils';
 
 export default function AdminPage() {
-    // const { subjects, loading } = useSubjects(); // REMOVED
-    const { isAdmin, loading: authLoading } = useAuth();
-    const { settings } = useSettings() as any; // Type assertion until types are fixed
+    const { isAdmin, loading: authLoading, user } = useAuth();
+    const { settings } = useSettings() as any;
     const router = useRouter();
 
     // Local state for pagination
@@ -110,17 +109,31 @@ export default function AdminPage() {
         }
     }, [isAdmin, authLoading, router]);
 
-    const togglePayment = async () => {
+    // Helper to update settings with Auth
+    const updateSettings = async (newSettings: any) => {
+        if (!user) return;
         try {
+            const token = await user.getIdToken();
             await fetch('/api/settings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...settings, isPaymentEnabled: !settings.isPaymentEnabled }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(newSettings),
             });
         } catch (error) {
-            console.error('Error toggling payment:', error);
-            alert('Failed to update settings');
+            console.error('Error updating settings:', error);
+            toast.error('Failed to update settings');
         }
+    };
+
+    const togglePayment = async () => {
+        await updateSettings({ ...settings, isPaymentEnabled: !settings.isPaymentEnabled });
+    };
+
+    const toggleCommunity = async () => {
+        await updateSettings({ ...settings, isCommunityEnabled: !settings.isCommunityEnabled });
     };
 
     const handleDownloadJson = async (subject: SubjectMetadata) => {
@@ -385,6 +398,20 @@ export default function AdminPage() {
                         <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-600" />
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                Global Chat
+                            </span>
+                            <button
+                                onClick={toggleCommunity}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${settings.isCommunityEnabled ? 'bg-indigo-600' : 'bg-zinc-200 dark:bg-zinc-600'}`}
+                            >
+                                <span
+                                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${settings.isCommunityEnabled ? 'translate-x-4' : 'translate-x-1'}`}
+                                />
+                            </button>
+                        </div>
+                        <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-600" />
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                 Duration (Months):
                             </span>
                             <input
@@ -393,16 +420,7 @@ export default function AdminPage() {
                                 value={settings.courseDurationMonths || 5}
                                 onChange={async (e) => {
                                     const val = parseInt(e.target.value) || 1;
-                                    try {
-                                        await fetch('/api/settings', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ ...settings, courseDurationMonths: val }),
-                                        });
-                                        // Ideally we should update local state here too, but the hook will pick it up
-                                    } catch (error) {
-                                        console.error('Error updating duration:', error);
-                                    }
+                                    await updateSettings({ ...settings, courseDurationMonths: val });
                                 }}
                                 className="w-16 rounded-md border border-zinc-200 px-2 py-1 text-sm bg-white dark:bg-zinc-900 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
@@ -414,7 +432,15 @@ export default function AdminPage() {
                         className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors shadow-sm"
                     >
                         <Flag className="h-4 w-4" />
-                        Reports
+                        Content Reports
+                    </button>
+
+                    <button
+                        onClick={() => router.push('/admin/reports/messages')}
+                        className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+                    >
+                        <MessageSquare className="h-4 w-4" />
+                        Chat Reports
                     </button>
 
                     <button
@@ -607,6 +633,6 @@ export default function AdminPage() {
                 onClose={() => setIsEnrollmentModalOpen(false)}
                 subjects={subjects}
             />
-        </div>
+        </div >
     );
 }

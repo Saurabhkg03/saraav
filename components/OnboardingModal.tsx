@@ -4,20 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpen, GraduationCap } from 'lucide-react';
 
-const BRANCHES = [
-    "Computer Science & Engineering",
-    "Information Technology",
-    "Electronics & Telecommunication",
-    "Mechanical Engineering",
-    "Electrical Engineering"
-];
-
-const YEARS = [
-    "1st Year",
-    "2nd Year",
-    "3rd Year",
-    "4th Year"
-];
+import { BRANCHES, YEARS } from '@/lib/constants';
 
 export function OnboardingModal() {
     const { user, branch, year, updateProfile, loading } = useAuth();
