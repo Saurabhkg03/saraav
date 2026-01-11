@@ -20,7 +20,7 @@ import {
     DocumentSnapshot
 } from "firebase/firestore";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { Send, Loader2, Menu, ArrowUpCircle, X, Check } from "lucide-react";
+import { Send, Loader2, ArrowLeft, ArrowUpCircle, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -42,12 +42,12 @@ interface Message {
 
 interface ChatAreaProps {
     channel: Channel;
-    onMobileMenuClick: () => void;
+    onBack: () => void;
 }
 
 const MESSAGES_PER_PAGE = 20;
 
-export function ChatArea({ channel, onMobileMenuClick }: ChatAreaProps) {
+export function ChatArea({ channel, onBack }: ChatAreaProps) {
     const { user } = useAuth();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState("");
@@ -292,8 +292,8 @@ export function ChatArea({ channel, onMobileMenuClick }: ChatAreaProps) {
         <div className="flex h-full flex-col bg-white dark:bg-zinc-950">
             {/* Header */}
             <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950 md:px-6 md:py-4">
-                <Button variant="ghost" size="icon" className="md:hidden -ml-2 shrink-0" onClick={onMobileMenuClick}>
-                    <Menu className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
+                <Button variant="ghost" size="icon" className="md:hidden -ml-2 shrink-0" onClick={onBack}>
+                    <ArrowLeft className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
                 </Button>
                 <div>
                     <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 md:text-xl"># {channel.name}</h1>
