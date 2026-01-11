@@ -8,13 +8,15 @@ import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
 import { DeleteAccountModal } from '@/components/DeleteAccountModal';
+import { BRANCHES, YEARS } from '@/lib/constants';
 
 export default function ProfilePage() {
-    const { user, loading: authLoading, logout } = useAuth();
+    const { user, loading: authLoading, logout, updateProfile, branch: authBranch, year: authYear } = useAuth();
     const router = useRouter();
     const [displayName, setDisplayName] = useState('');
+    const [branch, setBranch] = useState('');
+    const [year, setYear] = useState('');
     const [saving, setSaving] = useState(false);
-    const [fetching, setFetching] = useState(true);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -24,30 +26,14 @@ export default function ProfilePage() {
         }
     }, [user, authLoading, router]);
 
+    // Sync from AuthContext when available
     useEffect(() => {
-        const fetchUserProfile = async () => {
-            if (user) {
-                try {
-                    const docRef = doc(db, "users", user.uid);
-                    const docSnap = await getDoc(docRef);
-
-                    if (docSnap.exists() && docSnap.data().displayName) {
-                        setDisplayName(docSnap.data().displayName);
-                    } else {
-                        setDisplayName(user.displayName || '');
-                    }
-                } catch (error) {
-                    console.error("Error fetching profile:", error);
-                } finally {
-                    setFetching(false);
-                }
-            }
-        };
-
         if (user) {
-            fetchUserProfile();
+            setDisplayName(user.displayName || '');
         }
-    }, [user]);
+        if (authBranch) setBranch(authBranch);
+        if (authYear) setYear(authYear);
+    }, [user, authBranch, authYear]);
 
     const handleSave = async () => {
         if (!user) return;
@@ -62,6 +48,9 @@ export default function ProfilePage() {
                 photoURL: user.photoURL,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
+
+            // Update Context & Separate Fields
+            await updateProfile({ branch, year });
 
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
         } catch (error) {
@@ -114,7 +103,7 @@ export default function ProfilePage() {
         }
     };
 
-    if (authLoading || fetching) {
+    if (authLoading) {
         return <div className="flex h-screen items-center justify-center text-zinc-500">Loading...</div>;
     }
 
@@ -168,6 +157,56 @@ export default function ProfilePage() {
                                 className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
                                 placeholder="Enter your name"
                             />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                            <div>
+                                <label htmlFor="branch" className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                    Branch
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        id="branch"
+                                        value={branch}
+                                        onChange={(e) => setBranch(e.target.value)}
+                                        className="w-full appearance-none rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                    >
+                                        <option value="">Select Branch</option>
+                                        {BRANCHES.map((b) => (
+                                            <option key={b} value={b}>{b}</option>
+                                        ))}
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-500">
+                                        <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="year" className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                    Year
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        id="year"
+                                        value={year}
+                                        onChange={(e) => setYear(e.target.value)}
+                                        className="w-full appearance-none rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                    >
+                                        <option value="">Select Year</option>
+                                        {YEARS.map((y) => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-500">
+                                        <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {message && (

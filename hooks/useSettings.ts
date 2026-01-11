@@ -5,7 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export function useSettings() {
-    const [settings, setSettings] = useState({ isPaymentEnabled: true, courseDurationMonths: 5 });
+    const [settings, setSettings] = useState({ isPaymentEnabled: true, courseDurationMonths: 5, isCommunityEnabled: true });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -14,11 +14,12 @@ export function useSettings() {
                 const data = doc.data();
                 setSettings({
                     isPaymentEnabled: data.isPaymentEnabled ?? true,
-                    courseDurationMonths: data.courseDurationMonths ?? 5
+                    courseDurationMonths: data.courseDurationMonths ?? 5,
+                    isCommunityEnabled: data.isCommunityEnabled ?? true
                 });
             } else {
                 // Default if doc doesn't exist yet
-                setSettings({ isPaymentEnabled: true, courseDurationMonths: 5 });
+                setSettings({ isPaymentEnabled: true, courseDurationMonths: 5, isCommunityEnabled: true });
             }
             setLoading(false);
         }, (error) => {
