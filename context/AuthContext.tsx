@@ -7,7 +7,6 @@ import {
     GoogleAuthProvider,
     signInWithPopup,
     signOut,
-    signOut,
     signInWithRedirect,
     getRedirectResult,
     setPersistence,
