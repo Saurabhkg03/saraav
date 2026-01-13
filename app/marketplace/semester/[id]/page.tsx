@@ -42,7 +42,7 @@ export default function SemesterBundlePage() {
                 const db = getFirestore();
 
                 // Special handling for synthetic 1st Year bundles
-                if (bundleId === 'FirstYear-GroupA' || bundleId === 'FirstYear-GroupB') {
+                if (bundleId === 'FirstYear-GroupA' || bundleId === 'FirstYear-GroupB' || bundleId === 'FirstYear-General') {
                     // Fetch all 1st year subjects
                     // We need subjects from Sem 1, Sem 2, or First Year
                     // OR just fetch all and filter client side if the dataset is small (subjects_metadata)
@@ -57,13 +57,22 @@ export default function SemesterBundlePage() {
                     const snap = await getDocs(q);
                     const allFirstYear = snap.docs.map(d => ({ id: d.id, ...d.data() } as SubjectMetadata));
 
-                    const targetGroup = bundleId === 'FirstYear-GroupA' ? 'A' : 'B';
+                    let targetGroup = null;
+                    if (bundleId === 'FirstYear-GroupA') targetGroup = 'A';
+                    else if (bundleId === 'FirstYear-GroupB') targetGroup = 'B';
 
-                    const validSubjects = allFirstYear.filter(s => s.group === targetGroup || s.isCommon);
+                    const validSubjects = allFirstYear.filter(s => {
+                        if (targetGroup) {
+                            return s.group === targetGroup || s.isCommon;
+                        } else {
+                            // General: Not A, Not B, Not Common
+                            return s.group !== 'A' && s.group !== 'B' && !s.isCommon;
+                        }
+                    });
 
                     if (validSubjects.length > 0) {
                         setBundleData({
-                            branch: `First Year - Group ${targetGroup}`,
+                            branch: targetGroup ? `First Year - Group ${targetGroup}` : 'First Year',
                             semester: 'First Year',
                             subjects: validSubjects
                         });
@@ -320,7 +329,7 @@ export default function SemesterBundlePage() {
                             <div className="mt-8">
                                 {isFullyOwned ? (
                                     <Link
-                                        href={`/courses?bundle=${encodeURIComponent(`${branch}-${semester}`)}`}
+                                        href={`/courses?bundle=${encodeURIComponent(bundleId)}`}
                                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-8 py-4 text-base font-semibold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl"
                                     >
                                         <BookOpen className="h-5 w-5" />
@@ -362,7 +371,7 @@ export default function SemesterBundlePage() {
                     <div className="flex-1">
                         {isFullyOwned ? (
                             <Link
-                                href={`/courses?bundle=${encodeURIComponent(`${branch}-${semester}`)}`}
+                                href={`/courses?bundle=${encodeURIComponent(bundleId)}`}
                                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-green-700"
                             >
                                 <BookOpen className="h-4 w-4" />
