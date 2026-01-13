@@ -7,12 +7,17 @@ import {
     GoogleAuthProvider,
     signInWithPopup,
     signOut,
+    signOut,
     signInWithRedirect,
-    getRedirectResult
+    getRedirectResult,
+    setPersistence,
+    browserLocalPersistence,
+    fetchSignInMethodsForEmail
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, getDocFromServer } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { UserProfile } from "@/lib/types";
+import { toast } from "sonner";
 
 interface AuthContextType {
     user: User | null;
@@ -63,8 +68,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!user) return;
         try {
             const userDocRef = doc(db, "users", user.uid);
-            // Force fetch from server to bypass local cache, ensuring we get the latest
-            // purchasedCourseIds updated by the API/Backend.
             const userDocSnap = await getDocFromServer(userDocRef);
 
             if (userDocSnap.exists()) {
@@ -80,119 +83,129 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Handle Redirect Result (for Mobile/Redirect Flow)
     useEffect(() => {
-        const checkRedirect = async () => {
-            try {
-                await getRedirectResult(auth);
-            } catch (error) {
-                console.error("Error confirming redirect login", error);
-            }
-        };
-        checkRedirect();
-    }, []);
+        let unsubscribe: () => void;
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            setUser(user);
-            if (user) {
-                // Set predictive flag
-                localStorage.setItem('isLoggedIn', 'true');
+        const initializeAuth = async () => {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-                // Check Admin Status
+            if (isMobile) {
                 try {
-                    // 1. FAST PATH: Custom Claims
-                    const idTokenResult = await user.getIdTokenResult();
-                    if (idTokenResult.claims.admin) {
-                        setIsAdmin(true);
-                    } else {
-                        // 2. SLOW PATH: API Check (Secure Fallback)
-                        // verifying via server instead of reading secure docs directly
-                        try {
-                            const token = await user.getIdToken();
-                            const res = await fetch('/api/admin/set-claims', {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
+                    // On mobile, check for redirect result FIRST before listening to auth state
+                    const result = await getRedirectResult(auth);
+                    if (result) {
+                        console.log("[Auth] Redirect login successful:", result.user.uid);
+                    }
+                } catch (error: any) {
+                    console.error("Error confirming redirect login", error);
+                    if (error.code !== 'auth/popup-closed-by-user') {
+                        toast.error("Login failed: " + error.message);
+                    }
+                }
+            }
 
-                            if (res.ok) {
-                                // If API says "Yes, I set your claims", refresh immediately
-                                const result = await res.json();
-                                if (result.success) {
-                                    await user.getIdToken(true);
-                                    const newIdTokenrResult = await user.getIdTokenResult();
-                                    if (newIdTokenrResult.claims.admin) {
-                                        setIsAdmin(true);
+            // Now listen to auth state changes
+            unsubscribe = onAuthStateChanged(auth, async (user) => {
+                setUser(user);
+                if (user) {
+                    // Set predictive flag
+                    localStorage.setItem('isLoggedIn', 'true');
+
+                    // Check Admin Status
+                    try {
+                        const idTokenResult = await user.getIdTokenResult();
+                        if (idTokenResult.claims.admin) {
+                            setIsAdmin(true);
+                        } else {
+                            try {
+                                const token = await user.getIdToken();
+                                const res = await fetch('/api/admin/set-claims', {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                });
+
+                                if (res.ok) {
+                                    const result = await res.json();
+                                    if (result.success) {
+                                        await user.getIdToken(true);
+                                        const newIdTokenrResult = await user.getIdTokenResult();
+                                        if (newIdTokenrResult.claims.admin) {
+                                            setIsAdmin(true);
+                                        }
                                     }
                                 }
+                            } catch (apiErr) {
+                                console.error("Admin check API failed:", apiErr);
                             }
-                        } catch (apiErr) {
-                            console.error("Admin check API failed:", apiErr);
                         }
-                    }
-                } catch (err) {
-                    console.error("Error checking admin roles:", err);
-                    setIsAdmin(false);
-                }
-
-                // Fetch user data from Firestore
-                try {
-                    const userDocRef = doc(db, "users", user.uid);
-                    const userDocSnap = await getDoc(userDocRef);
-
-                    if (userDocSnap.exists()) {
-                        const data = userDocSnap.data();
-                        setPurchasedCourseIds(data.purchasedCourseIds || []);
-                        setPurchases(data.purchases || {});
-                        setBranch(data.branch);
-                        setYear(data.year);
-                        setHasSeenWelcomeModal(data.hasSeenWelcomeModal || false);
-                    } else {
-                        // Create user doc if it doesn't exist
-                        await setDoc(userDocRef, {
-                            email: user.email,
-                            displayName: user.displayName,
-                            photoURL: user.photoURL,
-                            createdAt: new Date().toISOString(),
-                            purchasedCourseIds: [],
-                            hasSeenWelcomeModal: false
-                        });
-                        setPurchasedCourseIds([]);
-                        setPurchases({});
-                        setHasSeenWelcomeModal(false);
+                    } catch (err) {
+                        console.error("Error checking admin roles:", err);
+                        setIsAdmin(false);
                     }
 
-                    // Listen to progress subcollection
-                    import("firebase/firestore").then(({ collection, onSnapshot }) => {
-                        const progressCollectionRef = collection(db, "users", user.uid, "progress");
-                        const unsubscribeProgress = onSnapshot(progressCollectionRef, (snapshot) => {
-                            const newProgress: UserProfile['progress'] = {};
-                            snapshot.forEach((doc) => {
-                                newProgress[doc.id] = doc.data() as any;
+                    // Fetch user data from Firestore
+                    try {
+                        const userDocRef = doc(db, "users", user.uid);
+                        const userDocSnap = await getDoc(userDocRef);
+
+                        if (userDocSnap.exists()) {
+                            const data = userDocSnap.data();
+                            setPurchasedCourseIds(data.purchasedCourseIds || []);
+                            setPurchases(data.purchases || {});
+                            setBranch(data.branch);
+                            setYear(data.year);
+                            setHasSeenWelcomeModal(data.hasSeenWelcomeModal || false);
+                        } else {
+                            // Create user doc if it doesn't exist
+                            await setDoc(userDocRef, {
+                                email: user.email,
+                                displayName: user.displayName,
+                                photoURL: user.photoURL,
+                                createdAt: new Date().toISOString(),
+                                purchasedCourseIds: [],
+                                hasSeenWelcomeModal: false
                             });
-                            setProgress(newProgress);
+                            setPurchasedCourseIds([]);
+                            setPurchases({});
+                            setHasSeenWelcomeModal(false);
+                        }
+
+                        // Listen to progress subcollection
+                        import("firebase/firestore").then(({ collection, onSnapshot }) => {
+                            const progressCollectionRef = collection(db, "users", user.uid, "progress");
+                            const unsubscribeProgress = onSnapshot(progressCollectionRef, (snapshot) => {
+                                const newProgress: UserProfile['progress'] = {};
+                                snapshot.forEach((doc) => {
+                                    newProgress[doc.id] = doc.data() as any;
+                                });
+                                setProgress(newProgress);
+                            });
                         });
-                    });
 
-                } catch (error) {
-                    console.error("Error fetching user data:", error);
+                    } catch (error) {
+                        console.error("Error fetching user data:", error);
+                    }
+                } else {
+                    // Clear predictive flag
+                    localStorage.removeItem('isLoggedIn');
+
+                    setIsAdmin(false);
+                    setPurchasedCourseIds([]);
+                    setPurchases({});
+                    setBranch(undefined);
+                    setYear(undefined);
+                    setHasSeenWelcomeModal(false);
+                    setProgress({});
                 }
-            } else {
-                // Clear predictive flag
-                localStorage.removeItem('isLoggedIn');
+                setLoading(false);
+            });
+        };
 
-                setIsAdmin(false);
-                setPurchasedCourseIds([]);
-                setPurchases({});
-                setBranch(undefined);
-                setYear(undefined);
-                setHasSeenWelcomeModal(false);
-                setProgress({});
-            }
-            setLoading(false);
-        });
+        initializeAuth();
 
-        return () => unsubscribe();
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
     }, []);
 
     const login = async () => {
@@ -201,12 +214,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             prompt: 'select_account'
         });
 
+        // Ensure persistence is set to LOCAL to allow redirects to work across page loads
+        try {
+            await setPersistence(auth, browserLocalPersistence);
+        } catch (err) {
+            console.error("Persistence error:", err);
+        }
+
         // Detect Mobile Device
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
         if (isMobile) {
+            console.log("[Auth] Starting mobile redirect login...");
             await signInWithRedirect(auth, provider);
         } else {
+            console.log("[Auth] Starting desktop popup login...");
             await signInWithPopup(auth, provider);
         }
     };
