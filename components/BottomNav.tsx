@@ -60,13 +60,11 @@ export function BottomNav() {
                                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
                         )}
                     >
-                        <div className={cn("relative flex items-center justify-center", link.highlight && "rounded-xl bg-indigo-50 p-2 dark:bg-indigo-900/20")}>
+                        <div className="relative flex items-center justify-center">
                             <link.icon
                                 className={cn(
                                     "h-6 w-6 transition-transform",
-                                    link.active && "scale-110",
-                                    link.highlight && link.active && "text-indigo-600 dark:text-indigo-400",
-                                    link.highlight && !link.active && "text-indigo-600 dark:text-indigo-400"
+                                    link.active && "scale-110"
                                 )}
                                 strokeWidth={link.active ? 2.5 : 2}
                             />
