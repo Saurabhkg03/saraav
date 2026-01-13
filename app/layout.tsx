@@ -14,6 +14,7 @@ import { FeedbackReminder } from "@/components/FeedbackReminder";
 import JsonLd from "@/components/JsonLd";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { BottomNav } from "@/components/BottomNav";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -100,6 +101,7 @@ export default function RootLayout({
                   {children}
                 </LayoutWrapper>
                 <Footer />
+                <BottomNav />
                 <Toaster richColors position="top-center" />
               </div>
             </FeedbackProvider>

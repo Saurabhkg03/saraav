@@ -81,7 +81,7 @@ export function MarketplaceContent({ initialBundles }: { initialBundles: any[] }
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                             <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                                Semester Bundles
+                                Marketplace
                             </h1>
                             <p className="mt-2 text-zinc-500 dark:text-zinc-400">
                                 Select your semester to view available courses.

@@ -8,7 +8,7 @@ export function Footer() {
     const { openFeedback } = useFeedback();
 
     return (
-        <footer className="border-t border-zinc-200 bg-white py-12 dark:border-zinc-800 dark:bg-zinc-950">
+        <footer className="hidden lg:block border-t border-zinc-200 bg-white py-12 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* ADJUST MARGINS HERE: Change px-4 (mobile), sm:px-6 (tablet), lg:px-8 (desktop) to adjust side spacing. Change max-w-7xl to max-w-5xl or max-w-6xl to make the content narrower. */}
                 <div className="grid grid-cols-2 gap-8 md:grid-cols-4">

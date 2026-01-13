@@ -289,210 +289,260 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
     };
 
     return (
-        <div className="flex h-full flex-col bg-white dark:bg-zinc-950">
-            {/* Header */}
-            <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950 md:px-6 md:py-4">
-                <Button variant="ghost" size="icon" className="md:hidden -ml-2 shrink-0" onClick={onBack}>
+        <div className="flex h-full flex-col bg-zinc-50 dark:bg-black">
+            {/* Header - Glassmorphism */}
+            <div className="flex items-center gap-3 border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80 md:px-6 md:py-4 z-10 sticky top-0">
+                <Button variant="ghost" size="icon" className="md:hidden -ml-2 shrink-0 rounded-full" onClick={onBack}>
                     <ArrowLeft className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
                 </Button>
                 <div>
-                    <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 md:text-xl"># {channel.name}</h1>
+                    <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 md:text-xl leading-tight"># {channel.name}</h1>
                     {channel.description && (
-                        <p className="line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400 md:text-sm">{channel.description}</p>
+                        <p className="line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400 font-medium">{channel.description}</p>
                     )}
                 </div>
             </div>
 
-            {/* Messages List */}
+            {/* Messages List - Background Pattern Optional */}
             <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto p-6 space-y-6"
+                className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 overscroll-contain"
+                style={{
+                    backgroundImage: "radial-gradient(#cbd5e1 1px, transparent 1px)",
+                    backgroundSize: "20px 20px",
+                    backgroundAttachment: "local" // So it scrolls
+                }}
             >
+                {/* Mask for dark mode dots */}
+                <div className="absolute inset-0 pointer-events-none bg-white/90 dark:bg-black/90 mix-blend-overlay fixed" />
+
                 {/* Load More Button */}
                 {hasMore && !loadingMessages && (
-                    <div className="flex justify-center pt-2">
+                    <div className="flex justify-center pt-2 relative z-10">
                         <Button
-                            variant="ghost"
-                            size="sm"
+                            variant="secondary"
+                            size="xs"
                             onClick={handleLoadMore}
                             disabled={loadingMore}
-                            className="text-xs text-zinc-500 hover:text-indigo-600 dark:text-zinc-400"
+                            className="rounded-full px-4 h-8 text-xs font-medium shadow-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                         >
                             {loadingMore ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <ArrowUpCircle className="h-3 w-3 mr-2" />}
-                            Load Previous Messages
+                            Load History
                         </Button>
                     </div>
                 )}
 
                 {loadingMore && !hasMore && (
-                    <div className="flex justify-center py-2">
+                    <div className="flex justify-center py-2 relative z-10">
                         <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
                     </div>
                 )}
 
                 {loadingMessages ? (
-                    <div className="flex h-full items-center justify-center">
+                    <div className="flex h-full items-center justify-center relative z-10">
                         <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
                     </div>
                 ) : messages.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center text-zinc-400">
-                        <p>No messages yet.</p>
-                        <p className="text-sm">Be the first to say hello!</p>
+                    <div className="flex h-full flex-col items-center justify-center text-zinc-400 relative z-10 space-y-2">
+                        <div className="h-16 w-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-2 rotate-3">
+                            <span className="text-2xl">👋</span>
+                        </div>
+                        <p className="font-medium">No messages yet</p>
+                        <p className="text-sm text-zinc-500">Be the first to say hello!</p>
                     </div>
                 ) : (
-                    messages.map((msg, index) => {
-                        const isMe = msg.senderId === user?.uid;
-                        const showHeader = index === 0 || messages[index - 1].senderId !== msg.senderId;
-                        const isEditingThis = editingDetails?.id === msg.id;
+                    <div className="flex flex-col gap-1 relative z-10 pb-4">
+                        {messages.map((msg, index) => {
+                            const isMe = msg.senderId === user?.uid;
+                            const prevMsg = messages[index - 1];
+                            const nextMsg = messages[index + 1];
 
-                        // Format Time
-                        const timeString = msg.createdAt?.seconds
-                            ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                            : "";
+                            const isSameSenderPrev = prevMsg && prevMsg.senderId === msg.senderId;
+                            const isSameSenderNext = nextMsg && nextMsg.senderId === msg.senderId;
 
-                        return (
-                            <div key={msg.id} className={cn("group flex gap-3", isMe ? "flex-row-reverse" : "flex-row")}>
-                                {/* Avatar */}
-                                <div className="flex-shrink-0 w-8 h-8 mt-1">
-                                    {!isMe && showHeader ? (
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={msg.senderPhotoURL || ""} alt={msg.senderName} />
-                                            <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs font-bold">
-                                                {msg.senderName.substring(0, 2).toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    ) : !isMe && (
-                                        <div className="w-8" />
+                            // Grouping Logic:
+                            // Show Avatar if: Not me AND (Next is different OR Last message) -> Actually typical chat shows avatar at bottom of group
+                            // Let's stick to standard: Avatar at Top of group or Bottom.
+                            // WhatsApp/Telegram: No avatars in DM, usually avatars in Group.
+                            // Let's do: Avatar at Top of group.
+                            const showAvatar = !isMe && (!isSameSenderPrev);
+                            const showName = !isMe && (!isSameSenderPrev);
+
+                            // Bubble Corners
+                            // Me: Top-Right is sharp if isSameSenderPrev is true? No.
+                            // Standard: First in group has sharp distinct corner, middles are rounded, last is distinct?
+                            // Simple approach: Me (Rounded-TR-None), Others (Rounded-TL-None) always.
+                            // Refined: 
+                            // Me: If same sender next, rounded-br-lg. If last, rounded-br-none (Tail).
+                            // Actually simple is better: Always 'chat bubble' shape.
+
+                            const isEditingThis = editingDetails?.id === msg.id;
+
+                            // Format Time
+                            const timeString = msg.createdAt?.seconds
+                                ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                : "";
+
+                            return (
+                                <div
+                                    key={msg.id}
+                                    className={cn(
+                                        "group flex gap-2 max-w-3xl",
+                                        isMe ? "self-end flex-row-reverse" : "self-start flex-row",
+                                        isSameSenderNext ? "mb-0.5" : "mb-4" // Tighter grouping
                                     )}
-                                </div>
+                                    style={{ width: '100%' }} // Flex container needs width to align self
+                                >
+                                    {/* Avatar Column */}
+                                    <div className="flex-shrink-0 w-8 flex flex-col justify-end">
+                                        {!isMe && !isSameSenderNext ? (
+                                            <Avatar className="h-8 w-8 ring-2 ring-white dark:ring-black">
+                                                <AvatarImage src={msg.senderPhotoURL || ""} alt={msg.senderName} />
+                                                <AvatarFallback className="bg-indigo-100 text-indigo-700 text-[10px] font-bold">
+                                                    {msg.senderName.substring(0, 2).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        ) : !isMe && <div className="w-8" />}
+                                        {/* Spacer if grouped */}
+                                    </div>
 
-                                <div className={cn("flex flex-col max-w-[85%]", isMe ? "items-end" : "items-start")}>
-                                    {showHeader && !isMe && (
-                                        <div className="flex items-baseline gap-2 mb-1 ml-1">
-                                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                    <div className={cn("flex flex-col max-w-[75%] sm:max-w-[65%]", isMe ? "items-end" : "items-start")}>
+                                        {showName && (
+                                            <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 ml-1 mb-1">
                                                 {msg.senderName}
                                             </span>
-                                            <span className="text-[10px] text-zinc-400">
-                                                {timeString}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {showHeader && isMe && (
-                                        <div className="flex items-baseline gap-2 mb-1 mr-1">
-                                            <span className="text-[10px] text-zinc-400">{timeString}</span>
-                                        </div>
-                                    )}
-
-                                    <div className={cn("flex items-end gap-2 w-full", isMe ? "justify-end" : "justify-start")}>
-                                        {/* Action Menu Left (For Me) */}
-                                        {isMe && !isEditingThis && (
-                                            <div className="mr-2 self-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <MessageMenu
-                                                    isMe={true}
-                                                    onEdit={() => setEditingDetails({ id: msg.id, text: msg.text })}
-                                                    onDelete={() => handleDeleteClick(msg.id)}
-                                                    messageId={msg.id}
-                                                    messageContent={msg.text}
-                                                    messageSenderId={msg.senderId}
-                                                    channelId={channel.id}
-                                                />
-                                            </div>
                                         )}
 
-                                        <div
-                                            className={cn(
-                                                "relative rounded-2xl px-4 py-2 text-sm shadow-sm",
-                                                isMe
-                                                    ? "bg-indigo-600 text-white rounded-tr-none"
-                                                    : "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 rounded-tl-none",
-                                                isEditingThis && "bg-white ring-2 ring-indigo-500 text-zinc-900 border-none px-2 py-2 w-full min-w-[300px]"
-                                            )}
-                                        >
-                                            {isEditingThis ? (
-                                                <div className="flex flex-col gap-2">
-                                                    <Textarea
-                                                        value={editingDetails.text}
-                                                        onChange={(e) => setEditingDetails({ ...editingDetails, text: e.target.value })}
-                                                        className="min-h-[60px] text-zinc-900 border-zinc-200 bg-white focus-visible:ring-0 p-0 shadow-none resize-none"
-                                                        disabled={updating}
+                                        <div className={cn("flex items-end gap-2 w-full", isMe ? "justify-end" : "justify-start")}>
+
+                                            {/* Action Menu (My Side) */}
+                                            {isMe && !isEditingThis && (
+                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity px-1">
+                                                    <MessageMenu
+                                                        isMe={true}
+                                                        onEdit={() => setEditingDetails({ id: msg.id, text: msg.text })}
+                                                        onDelete={() => handleDeleteClick(msg.id)}
+                                                        messageId={msg.id}
+                                                        messageContent={msg.text}
+                                                        messageSenderId={msg.senderId}
+                                                        channelId={channel.id}
                                                     />
-                                                    <div className="flex justify-end gap-2">
-                                                        <button
-                                                            onClick={() => setEditingDetails(null)}
-                                                            disabled={updating}
-                                                            className="p-1 rounded-full hover:bg-zinc-100 text-zinc-500"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={handleUpdateMessage}
-                                                            disabled={updating || !editingDetails.text.trim()}
-                                                            className="p-1 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
-                                                        >
-                                                            {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                                        </button>
-                                                    </div>
                                                 </div>
-                                            ) : (
-                                                <>
-                                                    <div className={cn("prose prose-sm max-w-none break-words", isMe ? "prose-invert" : "dark:prose-invert")}>
-                                                        <MarkdownRenderer content={msg.text} className={cn("text-sm", isMe ? "text-white" : "")} />
+                                            )}
+
+                                            <div
+                                                className={cn(
+                                                    "relative px-3 py-1.5 shadow-sm text-[14.5px] leading-relaxed break-words max-w-[75%]", // Reduced padding, slightly smaller text
+                                                    isMe
+                                                        ? "bg-indigo-600 text-white rounded-2xl rounded-tr-sm" // My Bubble
+                                                        : "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 rounded-2xl rounded-tl-sm", // Other Bubble
+                                                    isEditingThis && "bg-white ring-2 ring-indigo-500 text-zinc-900 border-none px-2 py-2 w-full min-w-[280px] rounded-xl"
+                                                )}
+                                            >
+                                                {!isMe && showName && (
+                                                    <p className="text-[11px] font-bold text-indigo-500 mb-0.5 opacity-90">{msg.senderName}</p>
+                                                )}
+
+                                                {isEditingThis ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        {/* Edit form logic remains same, just ensuring wrapper is okay */}
+                                                        <Textarea
+                                                            value={editingDetails.text}
+                                                            onChange={(e) => setEditingDetails({ ...editingDetails, text: e.target.value })}
+                                                            className="min-h-[60px] text-sm bg-zinc-50 border-0 focus-visible:ring-0 resize-none p-2"
+                                                            disabled={updating}
+                                                            autoFocus
+                                                        />
+                                                        <div className="flex justify-end gap-2">
+                                                            <button
+                                                                onClick={() => setEditingDetails(null)}
+                                                                disabled={updating}
+                                                                className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-500 transition-colors"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={handleUpdateMessage}
+                                                                disabled={updating || !editingDetails.text.trim()}
+                                                                className="p-1.5 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 transition-colors"
+                                                            >
+                                                                {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    {msg.editedAt && (
-                                                        <span className={cn("block text-[10px] mt-1 opacity-70 italic text-right", isMe ? "text-indigo-200" : "text-zinc-400")}>
-                                                            (edited)
-                                                        </span>
-                                                    )}
-                                                </>
+                                                ) : (
+                                                    <>
+                                                        <MarkdownRenderer content={msg.text} className={cn("text-[14.5px]", isMe ? "text-white" : "")} />
+                                                        <div className={cn(
+                                                            "flex items-center justify-end gap-1 mt-0.5 select-none", // Reduced top margin
+                                                            isMe ? "text-indigo-100/70" : "text-zinc-400"
+                                                        )}>
+                                                            {msg.editedAt && (
+                                                                <span className="text-[9px] italic">edited</span>
+                                                            )}
+                                                            <span className="text-[9px] tabular-nums leading-none">
+                                                                {timeString}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            {/* Action Menu (Other Side) */}
+                                            {!isMe && (
+                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity px-1">
+                                                    <MessageMenu
+                                                        isMe={false}
+                                                        onEdit={() => { }}
+                                                        onDelete={() => { }}
+                                                        messageId={msg.id}
+                                                        messageContent={msg.text}
+                                                        messageSenderId={msg.senderId}
+                                                        channelId={channel.id}
+                                                    />
+                                                </div>
                                             )}
                                         </div>
-
-                                        {/* Action Menu Right (For Others) */}
-                                        {!isMe && (
-                                            <div className="ml-2 self-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <MessageMenu
-                                                    isMe={false}
-                                                    onEdit={() => { }} // No-op
-                                                    onDelete={() => { }} // No-op
-                                                    messageId={msg.id}
-                                                    messageContent={msg.text}
-                                                    messageSenderId={msg.senderId}
-                                                    channelId={channel.id}
-                                                />
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })
+                            );
+                        })}
+                    </div>
                 )}
                 {/* Scroll Anchor */}
                 <div ref={bottomRef} className="h-px w-full" />
             </div>
 
-            {/* Input Area */}
-            <div className="border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <form onSubmit={handleSendMessage} className="flex gap-2">
-                    <Textarea
-                        value={newMessage}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewMessage(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={`Message #${channel.name}...`}
-                        className="min-h-[50px] resize-none bg-white focus-visible:ring-indigo-500 dark:bg-zinc-900 dark:focus-visible:ring-indigo-400"
-                        rows={1}
-                    />
-                    <Button
-                        type="submit"
-                        disabled={sending || !newMessage.trim()}
-                        size="icon"
-                        className="h-[50px] w-[50px] shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
+            {/* Input Area - Static at bottom of flex column */}
+            <div className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 z-20">
+                <div className="max-w-4xl mx-auto">
+                    <form
+                        onSubmit={handleSendMessage}
+                        className="flex items-end gap-2 bg-zinc-100 dark:bg-zinc-900 p-2 pl-4 rounded-[24px] shadow-sm border border-transparent focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all dark:border-zinc-800"
                     >
-                        {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                    </Button>
-                </form>
-                <div className="mt-2 text-center text-xs text-zinc-400">
-                    <p>Markdown supported • Enter to send • Shift+Enter for new line</p>
+                        <Textarea
+                            value={newMessage}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewMessage(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Message..."
+                            className="min-h-[44px] max-h-[120px] py-3 resize-none bg-transparent border-none focus-visible:ring-0 shadow-none text-base placeholder:text-zinc-400 flex-1"
+                            rows={1}
+                            style={{ height: 'auto' }}
+                        />
+                        <Button
+                            type="submit"
+                            disabled={sending || !newMessage.trim()}
+                            size="icon"
+                            className={cn(
+                                "h-10 w-10 shrink-0 rounded-full transition-all mb-1 mr-1",
+                                newMessage.trim()
+                                    ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transform hover:scale-105 active:scale-95"
+                                    : "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600"
+                            )}
+                        >
+                            {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5 ml-0.5" />}
+                        </Button>
+                    </form>
                 </div>
             </div>
 

@@ -261,6 +261,60 @@ export default function ProfilePage() {
                 </div>
             </div>
 
+            {/* Support & Policies (Moved from Footer for Mobile) */}
+            <div className="mt-8 space-y-6 lg:hidden">
+                <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+                        Support & Policies
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Legal</h4>
+                            <ul className="space-y-2 text-sm">
+                                <li>
+                                    <a href="/policies/terms" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        Terms & Conditions
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/policies/privacy" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        Privacy Policy
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/policies/refund" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        Refund Policy
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/policies/shipping" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        Shipping Policy
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div className="space-y-3">
+                            <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Help</h4>
+                            <ul className="space-y-2 text-sm">
+                                <li>
+                                    <a href="/policies/contact" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        Contact Us
+                                    </a>
+                                </li>
+                                <li>
+                                    <button
+                                        onClick={() => window.location.href = 'mailto:support@saraav.in'}
+                                        className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400 text-left"
+                                    >
+                                        Email Support
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <DeleteAccountModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}

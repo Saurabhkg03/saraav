@@ -58,7 +58,7 @@ export default function CommunityPage() {
     }
 
     return (
-        <div className="relative flex h-[calc(100vh-4rem)] overflow-hidden bg-white dark:bg-zinc-950">
+        <div className="relative flex h-[calc(105dvh-4rem-100px)] lg:h-[calc(100dvh-4rem)] overflow-hidden bg-white dark:bg-zinc-950">
             {/* Sidebar: Visible on Desktop OR when Mobile Chat is CLOSED */}
             <div className={cn(
                 "h-full w-full md:w-64 md:flex-shrink-0 border-r border-zinc-200 dark:border-zinc-800",
