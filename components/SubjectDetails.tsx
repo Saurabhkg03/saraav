@@ -11,6 +11,7 @@ import { SyllabusView } from "@/components/SyllabusView";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/hooks/useSettings";
 import { PaymentButton } from "@/components/PaymentButton";
+import { cn } from "@/lib/utils";
 // import { useSubjects } from "@/hooks/useSubjects"; // REMOVED
 
 interface SubjectDetailsProps {
@@ -273,7 +274,10 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
             </div>
 
             {/* Mobile Sticky Footer - Bundle Enrollment */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+            <div className={cn(
+                "fixed left-0 right-0 z-40 border-t border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 lg:hidden",
+                user ? "bottom-[55px]" : "bottom-0" // Sit above BottomNav if logged in (increased to 90px to clear safe areas), else bottom
+            )}>
                 <div className="flex items-center justify-between gap-4">
                     <div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400">Bundle Price ({unownedBundleSubjects.length} subs)</p>

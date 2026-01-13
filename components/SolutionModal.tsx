@@ -132,7 +132,7 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
 
     return (
         <div className={cn(
-            "fixed z-50 flex flex-col bg-white dark:bg-zinc-950 md:hidden transition-all duration-300 ease-in-out",
+            "fixed z-[100] flex flex-col bg-white dark:bg-zinc-950 md:hidden transition-all duration-300 ease-in-out",
             !isFullScreen && "inset-0",
             isFullScreen
                 ? "origin-center rotate-90 w-[100dvh] h-[100dvw] max-h-[100dvw] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-none"

@@ -11,6 +11,8 @@ import { useMemo, useState, useEffect } from "react";
 
 import { useSettings } from "@/hooks/useSettings";
 
+import { cn } from "@/lib/utils";
+
 import { SubjectMetadata } from "@/lib/types";
 
 interface BundleData {
@@ -338,7 +340,10 @@ export default function SemesterBundlePage() {
             </div>
 
             {/* Mobile Sticky Footer */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+            <div className={cn(
+                "fixed left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 lg:hidden",
+                user ? "bottom-[55px]" : "bottom-0"
+            )}>
                 <div className="flex items-center justify-between gap-4">
                     {isFullyOwned ? (
                         <div className="flex items-center gap-2">

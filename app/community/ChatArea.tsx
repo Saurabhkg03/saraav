@@ -306,7 +306,7 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
             {/* Messages List - Background Pattern Optional */}
             <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 overscroll-contain"
+                className="relative flex-1 overflow-y-auto p-4 md:p-6 space-y-6 overscroll-contain"
                 style={{
                     backgroundImage: "radial-gradient(#cbd5e1 1px, transparent 1px)",
                     backgroundSize: "20px 20px",
@@ -314,7 +314,7 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
                 }}
             >
                 {/* Mask for dark mode dots */}
-                <div className="absolute inset-0 pointer-events-none bg-white/90 dark:bg-black/90 mix-blend-overlay fixed" />
+                <div className="absolute inset-0 pointer-events-none bg-white/90 dark:bg-black/90 mix-blend-overlay" />
 
                 {/* Load More Button */}
                 {hasMore && !loadingMessages && (

@@ -3,12 +3,18 @@
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { useFeedback } from '@/context/FeedbackContext';
+import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
 
 export function Footer() {
     const { openFeedback } = useFeedback();
+    const { user } = useAuth();
 
     return (
-        <footer className="hidden lg:block border-t border-zinc-200 bg-white py-12 dark:border-zinc-800 dark:bg-zinc-950">
+        <footer className={cn(
+            "border-t border-zinc-200 bg-white py-12 dark:border-zinc-800 dark:bg-zinc-950",
+            user ? "hidden lg:block" : "block" // Hide on mobile only if logged in (App mode)
+        )}>
             <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* ADJUST MARGINS HERE: Change px-4 (mobile), sm:px-6 (tablet), lg:px-8 (desktop) to adjust side spacing. Change max-w-7xl to max-w-5xl or max-w-6xl to make the content narrower. */}
                 <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
