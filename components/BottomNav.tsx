@@ -5,8 +5,13 @@ import { usePathname } from "next/navigation";
 import { Home, BookOpen, ShoppingBag, MessageSquare, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { useAuth } from "@/context/AuthContext";
+
 export function BottomNav() {
     const pathname = usePathname();
+    const { user } = useAuth();
+
+    if (!user) return null;
 
     const links = [
         {

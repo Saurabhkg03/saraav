@@ -321,7 +321,7 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
                     <div className="flex justify-center pt-2 relative z-10">
                         <Button
                             variant="secondary"
-                            size="xs"
+                            size="sm"
                             onClick={handleLoadMore}
                             disabled={loadingMore}
                             className="rounded-full px-4 h-8 text-xs font-medium shadow-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
