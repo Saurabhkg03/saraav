@@ -546,6 +546,16 @@ export default function AdminPage() {
                                 <div>
                                     <div className="flex items-center gap-3">
                                         <h3 className="font-medium text-zinc-900 dark:text-zinc-100">{subject.title}</h3>
+                                        {subject.isCommon && (
+                                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                                PCC
+                                            </span>
+                                        )}
+                                        {subject.group && (
+                                            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                                                Group {subject.group}
+                                            </span>
+                                        )}
                                         {subject.price && (
                                             <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                                                 ₹{subject.price}
