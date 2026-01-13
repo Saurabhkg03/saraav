@@ -6,7 +6,9 @@ import {
     User,
     GoogleAuthProvider,
     signInWithPopup,
-    signOut
+    signOut,
+    signInWithRedirect,
+    getRedirectResult
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, getDocFromServer } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -77,6 +79,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error("Error refreshing user data:", error);
         }
     };
+
+    // Handle Redirect Result (for Mobile/Redirect Flow)
+    useEffect(() => {
+        const checkRedirect = async () => {
+            try {
+                await getRedirectResult(auth);
+            } catch (error) {
+                console.error("Error confirming redirect login", error);
+            }
+        };
+        checkRedirect();
+    }, []);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -186,7 +200,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         provider.setCustomParameters({
             prompt: 'select_account'
         });
-        await signInWithPopup(auth, provider);
+
+        // Detect Mobile Device
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            await signInWithRedirect(auth, provider);
+        } else {
+            await signInWithPopup(auth, provider);
+        }
     };
 
     const logout = async () => {
