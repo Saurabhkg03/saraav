@@ -24,6 +24,18 @@ export function GlobalDataProvider({ children }: { children: React.ReactNode }) 
         const q = query(collection(db, "bundles"));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
+            const source = snapshot.metadata.fromCache ? "local cache" : "server";
+            console.log(`[GlobalData] Bundles update received from ${source}.`);
+            console.log(`[GlobalData] Total Documents: ${snapshot.size}`);
+
+            if (snapshot.metadata.fromCache) {
+                console.log(`[GlobalData] 🔥 READS SAVED! Loaded from cache. Cost: 0 reads.`);
+            } else {
+                const changes = snapshot.docChanges();
+                console.log(`[GlobalData] ☁️  Data fetched from server.`);
+                console.log(`[GlobalData] 💰 LOADING COST: ${changes.length} document reads (Modified/Added/Removed).`);
+            }
+
             const bundlesData = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()

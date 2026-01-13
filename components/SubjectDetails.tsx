@@ -45,6 +45,8 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
         const fetchSubjectData = async () => {
             try {
                 // 1. Fetch Subject Metadata
+                console.log(`[SubjectDetails] ☁️  Fetching subject metadata from server.`);
+                console.log(`[SubjectDetails] 💰 LOADING COST: 1 document read.`);
                 const metaSnap = await getDoc(doc(db, "subjects_metadata", subjectId)); // UPDATED to distinct collection if needed, mostly logic was correct but verifying
                 let currentMeta: SubjectMetadata | null = null;
 

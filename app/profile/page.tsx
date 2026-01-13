@@ -1,64 +1,20 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Save, Loader2, LogOut, AlertTriangle, Trash2 } from 'lucide-react';
+import { User, Mail, LogOut, Settings, GraduationCap, Calendar } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
-import { DeleteAccountModal } from '@/components/DeleteAccountModal';
-import { BRANCHES, YEARS } from '@/lib/constants';
+import Link from 'next/link';
 
 export default function ProfilePage() {
-    const { user, loading: authLoading, logout, updateProfile, branch: authBranch, year: authYear } = useAuth();
+    const { user, loading: authLoading, logout, branch, year } = useAuth();
     const router = useRouter();
-    const [displayName, setDisplayName] = useState('');
-    const [branch, setBranch] = useState('');
-    const [year, setYear] = useState('');
-    const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     useEffect(() => {
         if (!authLoading && !user) {
             router.push('/login');
         }
     }, [user, authLoading, router]);
-
-    // Sync from AuthContext when available
-    useEffect(() => {
-        if (user) {
-            setDisplayName(user.displayName || '');
-        }
-        if (authBranch) setBranch(authBranch);
-        if (authYear) setYear(authYear);
-    }, [user, authBranch, authYear]);
-
-    const handleSave = async () => {
-        if (!user) return;
-
-        setSaving(true);
-        setMessage(null);
-
-        try {
-            await setDoc(doc(db, "users", user.uid), {
-                displayName,
-                email: user.email,
-                photoURL: user.photoURL,
-                updatedAt: new Date().toISOString()
-            }, { merge: true });
-
-            // Update Context & Separate Fields
-            await updateProfile({ branch, year });
-
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
-        } catch (error) {
-            setMessage({ type: 'error', text: 'Failed to update profile.' });
-        } finally {
-            setSaving(false);
-        }
-    };
 
     const handleLogout = async () => {
         try {
@@ -69,257 +25,123 @@ export default function ProfilePage() {
         }
     };
 
-    const handleDeleteAccount = async () => {
-        if (!user) return;
-
-        try {
-            // 1. Delete user data from Firestore
-            await deleteDoc(doc(db, "users", user.uid));
-
-            // 2. Delete user from Firebase Auth
-            await deleteUser(user);
-
-            // 3. Redirect to home
-            router.push('/');
-        } catch (error: any) {
-            console.error("Error deleting account:", error);
-
-            // Handle requires-recent-login error
-            if (error.code === 'auth/requires-recent-login') {
-                try {
-                    const provider = new GoogleAuthProvider();
-                    await reauthenticateWithPopup(user, provider);
-                    // Retry deletion after re-auth
-                    await deleteDoc(doc(db, "users", user.uid));
-                    await deleteUser(user);
-                    router.push('/');
-                } catch (reAuthError) {
-                    console.error("Re-auth failed:", reAuthError);
-                    throw new Error("Re-authentication failed. Please log in again and try.');");
-                }
-            } else {
-                throw error;
-            }
-        }
-    };
-
-    if (authLoading) {
+    if (authLoading || !user) {
         return <div className="flex h-screen items-center justify-center text-zinc-500">Loading...</div>;
     }
-
-    if (!user) return null;
 
     return (
         <div className="container mx-auto max-w-2xl px-4 py-12">
             <div className="mb-8 flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Your Profile</h1>
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">My Profile</h1>
+                <Link
+                    href="/settings"
+                    className="flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                 >
-                    <LogOut className="h-4 w-4" />
-                    Log Out
-                </button>
+                    <Settings className="h-4 w-4" />
+                    Settings
+                </Link>
             </div>
 
             <div className="space-y-8">
                 {/* Profile Card */}
                 <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                    <div className="mb-8 flex flex-col items-center sm:flex-row sm:items-start sm:gap-6">
-                        <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 sm:mb-0">
+                    <div className="flex flex-col items-center gap-6 text-center">
+                        <div className="flex h-32 w-32 items-center justify-center rounded-full bg-zinc-100 p-1 ring-4 ring-white dark:bg-zinc-800 dark:ring-zinc-900">
                             {user.photoURL ? (
                                 <img src={user.photoURL} alt="Profile" className="h-full w-full rounded-full object-cover" />
                             ) : (
-                                <User className="h-12 w-12" />
+                                <User className="h-16 w-16 text-zinc-400" />
                             )}
                         </div>
 
-                        <div className="text-center sm:text-left">
-                            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{displayName || "User"}</h2>
-                            <p className="text-zinc-500 dark:text-zinc-400">{user.email}</p>
-                            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
-                                <Mail className="h-3 w-3" />
-                                {user.email}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div>
-                            <label htmlFor="displayName" className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                Display Name
-                            </label>
-                            <input
-                                type="text"
-                                id="displayName"
-                                value={displayName}
-                                onChange={(e) => setDisplayName(e.target.value)}
-                                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
-                                placeholder="Enter your name"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            <div>
-                                <label htmlFor="branch" className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                    Branch
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        id="branch"
-                                        value={branch}
-                                        onChange={(e) => setBranch(e.target.value)}
-                                        className="w-full appearance-none rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-                                    >
-                                        <option value="">Select Branch</option>
-                                        {BRANCHES.map((b) => (
-                                            <option key={b} value={b}>{b}</option>
-                                        ))}
-                                    </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-500">
-                                        <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label htmlFor="year" className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                    Year
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        id="year"
-                                        value={year}
-                                        onChange={(e) => setYear(e.target.value)}
-                                        className="w-full appearance-none rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-                                    >
-                                        <option value="">Select Year</option>
-                                        {YEARS.map((y) => (
-                                            <option key={y} value={y}>{y}</option>
-                                        ))}
-                                    </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-500">
-                                        <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                        </svg>
-                                    </div>
-                                </div>
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{user.displayName || "User"}</h2>
+                            <div className="flex items-center justify-center gap-2 text-zinc-500 dark:text-zinc-400">
+                                <Mail className="h-4 w-4" />
+                                <span>{user.email}</span>
                             </div>
                         </div>
 
-                        {message && (
-                            <div className={`rounded-lg p-3 text-sm ${message.type === 'success'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                }`}>
-                                {message.text}
+                        <div className="grid w-full grid-cols-2 gap-4 border-t border-zinc-100 pt-6 dark:border-zinc-800">
+                            <div className="flex flex-col items-center gap-1 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                                <GraduationCap className="mb-2 h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                                <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Branch</span>
+                                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{branch || "Not Set"}</span>
                             </div>
-                        )}
-
-                        <div className="flex justify-end">
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-                            >
-                                {saving ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4" />
-                                        Save Changes
-                                    </>
-                                )}
-                            </button>
+                            <div className="flex flex-col items-center gap-1 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                                <Calendar className="mb-2 h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                                <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Year</span>
+                                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{year || "Not Set"}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Danger Zone */}
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 dark:border-red-900/30 dark:bg-red-900/10">
-                    <h3 className="flex items-center gap-2 text-lg font-semibold text-red-900 dark:text-red-400">
-                        <AlertTriangle className="h-5 w-5" />
-                        Danger Zone
-                    </h3>
-                    <p className="mt-2 text-sm text-red-700 dark:text-red-300">
-                        Once you delete your account, there is no going back. Please be certain.
-                    </p>
-                    <div className="mt-6 flex justify-end">
-                        <button
-                            onClick={() => setIsDeleteModalOpen(true)}
-                            className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-red-600 shadow-sm ring-1 ring-inset ring-red-300 hover:bg-red-50 dark:bg-red-950 dark:text-red-400 dark:ring-red-900 dark:hover:bg-red-900/50"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                            Delete Account
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Support & Policies (Moved from Footer for Mobile) */}
-            <div className="mt-8 space-y-6 lg:hidden">
+                {/* Support & Policies Links */}
                 <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+                    <h3 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                         Support & Policies
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+                        <div className="space-y-4">
                             <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Legal</h4>
-                            <ul className="space-y-2 text-sm">
+                            <ul className="space-y-3 text-sm">
                                 <li>
-                                    <a href="/policies/terms" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
-                                        Terms & Conditions
-                                    </a>
+                                    <Link href="/policies/terms" className="flex items-center justify-between text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        <span>Terms & Conditions</span>
+                                    </Link>
                                 </li>
                                 <li>
-                                    <a href="/policies/privacy" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
-                                        Privacy Policy
-                                    </a>
+                                    <Link href="/policies/privacy" className="flex items-center justify-between text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        <span>Privacy Policy</span>
+                                    </Link>
                                 </li>
                                 <li>
-                                    <a href="/policies/refund" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
-                                        Refund Policy
-                                    </a>
+                                    <Link href="/policies/refund" className="flex items-center justify-between text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        <span>Refund Policy</span>
+                                    </Link>
                                 </li>
                                 <li>
-                                    <a href="/policies/shipping" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
-                                        Shipping Policy
-                                    </a>
+                                    <Link href="/policies/shipping" className="flex items-center justify-between text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        <span>Shipping Policy</span>
+                                    </Link>
                                 </li>
                             </ul>
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Help</h4>
-                            <ul className="space-y-2 text-sm">
+                            <ul className="space-y-3 text-sm">
                                 <li>
-                                    <a href="/policies/contact" className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
-                                        Contact Us
-                                    </a>
+                                    <Link href="/policies/contact" className="flex items-center justify-between text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400">
+                                        <span>Contact Us</span>
+                                    </Link>
                                 </li>
                                 <li>
-                                    <button
-                                        onClick={() => window.location.href = 'mailto:support@saraav.in'}
-                                        className="text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400 text-left"
+                                    <a
+                                        href="mailto:support@saraav.in"
+                                        className="flex items-center justify-between text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400"
                                     >
-                                        Email Support
-                                    </button>
+                                        <span>Email Support</span>
+                                    </a>
                                 </li>
                             </ul>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <DeleteAccountModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                onConfirm={handleDeleteAccount}
-            />
+                {/* Logout Button (Full Width) */}
+                <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-4 text-base font-medium text-red-600 hover:bg-red-100 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                >
+                    <LogOut className="h-5 w-5" />
+                    Log Out
+                </button>
+
+                <div className="text-center text-xs text-zinc-400 dark:text-zinc-600">
+                    Version 1.2.0 • Saraav Education
+                </div>
+            </div>
         </div>
     );
 }
