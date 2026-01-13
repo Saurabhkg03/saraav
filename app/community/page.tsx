@@ -12,18 +12,61 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export default function CommunityPage() {
-    const { user, branch, year } = useAuth();
+    const { user, branch, year, isAdmin } = useAuth();
+    const { settings, loading: settingsLoading } = useSettings() as any;
     const { channels, loading, requiresSetup } = useBranchChat();
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
     const [showMobileChat, setShowMobileChat] = useState(false);
 
-    // Auto-select first channel when channels load (Desktop only behavior effectively, but keeps state sync)
-    // We don't want to auto-open chat on mobile on load, so don't set showMobileChat here.
+    // Auto-select first channel when channels load
     useEffect(() => {
         if (channels.length > 0 && !activeChannelId) {
             setActiveChannelId(channels[0].id);
         }
     }, [channels, activeChannelId]);
+
+    // 1. Check Global Chat Lock (Coming Soon)
+    // We wait for settings to load to avoid flickering, or just show loading state.
+    // Ideally we assume enabled until loaded, or disabled until loaded. 
+    // Let's protect it: if loading settings, show loading or nothing.
+
+    if (settingsLoading) {
+        return (
+            <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-white dark:bg-zinc-950">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-indigo-600" />
+            </div>
+        );
+    }
+
+    if (!settings.isCommunityEnabled && !isAdmin) {
+        return (
+            <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center gap-6 bg-zinc-50 p-4 text-center dark:bg-zinc-950">
+                <div className="relative">
+                    <div className="absolute -inset-4 rounded-full bg-indigo-500/20 blur-xl dark:bg-indigo-400/10" />
+                    <div className="relative rounded-full bg-indigo-100 p-8 shadow-sm dark:bg-indigo-900/30">
+                        <MessageSquare className="h-16 w-16 text-indigo-600 dark:text-indigo-400" />
+                        <div className="absolute -bottom-2 -right-2 rounded-full bg-white p-2 shadow-sm dark:bg-zinc-800">
+                            <Settings className="h-6 w-6 animate-spin-slow text-amber-500" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="max-w-md space-y-2">
+                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                        Community Coming Soon
+                    </h1>
+                    <p className="text-lg text-zinc-500 dark:text-zinc-400">
+                        We are currently building a dedicated space for you to connect, discuss, and grow with your peers.
+                    </p>
+                    <div className="pt-4">
+                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                            Stay Tuned! 🚀
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const activeChannel = channels.find(c => c.id === activeChannelId);
 
