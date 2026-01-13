@@ -95,7 +95,9 @@ async function getBundles(): Promise<any[]> {
                 branch: subject.branch,
                 semester: subject.semester,
                 isElective: subject.isElective || false,
-                electiveCategory: subject.electiveCategory || ""
+                electiveCategory: subject.electiveCategory || "",
+                isCommon: subject.isCommon || false,
+                group: subject.group || null
             });
 
             groups[key].totalPrice += subject.price || 0;

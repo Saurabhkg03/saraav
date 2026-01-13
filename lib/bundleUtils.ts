@@ -53,6 +53,8 @@ export async function updateBundle(branch: string | undefined | null, semester: 
                 semester: s.semester,
                 isElective: s.isElective || false,
                 electiveCategory: s.electiveCategory || "",
+                isCommon: s.isCommon || false,
+                group: s.group || null,
                 units: s.units || []
             });
         });
