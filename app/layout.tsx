@@ -16,6 +16,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { BottomNav } from "@/components/BottomNav";
 import { GlobalDataProvider } from "@/context/GlobalDataContext";
+import { QueryProvider } from "@/components/QueryProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -89,26 +90,28 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <FeedbackProvider>
-              <GlobalDataProvider>
-                <JsonLd />
-                <Analytics />
-                <SpeedInsights />
-                <FeedbackReminder />
-                <WelcomeModalContainer />
-                <div className="flex min-h-screen flex-col bg-white dark:bg-black pt-16">
-                  <Navbar />
-                  <LayoutWrapper>
-                    {children}
-                  </LayoutWrapper>
-                  <Footer />
-                  <BottomNav />
-                  <Toaster richColors position="top-center" />
-                </div>
-              </GlobalDataProvider>
-            </FeedbackProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <FeedbackProvider>
+                <GlobalDataProvider>
+                  <JsonLd />
+                  <Analytics />
+                  <SpeedInsights />
+                  <FeedbackReminder />
+                  <WelcomeModalContainer />
+                  <div className="flex min-h-screen flex-col bg-white dark:bg-black pt-16">
+                    <Navbar />
+                    <LayoutWrapper>
+                      {children}
+                    </LayoutWrapper>
+                    <Footer />
+                    <BottomNav />
+                    <Toaster richColors position="top-center" />
+                  </div>
+                </GlobalDataProvider>
+              </FeedbackProvider>
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

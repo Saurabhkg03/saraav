@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreVertical, Trash, Pencil, Flag } from "lucide-react";
+import { MoreVertical, Trash, Pencil, Flag, Reply } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,6 +13,7 @@ import { ReportMessageDialog } from "./ReportMessageDialog";
 interface MessageMenuProps {
     isMe: boolean;
     isMobile?: boolean; // Optional: Adjust UI for mobile if needed
+    onReply: () => void;
     onEdit: () => void;
     onDelete: () => void;
     messageId: string;
@@ -23,6 +24,7 @@ interface MessageMenuProps {
 
 export function MessageMenu({
     isMe,
+    onReply,
     onEdit,
     onDelete,
     messageId,
@@ -39,6 +41,10 @@ export function MessageMenu({
                     <MoreVertical className="h-5 w-5 text-zinc-500 dark:text-zinc-400" strokeWidth={2.5} />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={isMe ? "end" : "start"}>
+                    <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer">
+                        <Reply className="h-4 w-4" />
+                        Reply
+                    </DropdownMenuItem>
                     {isMe ? (
                         <>
                             <DropdownMenuItem onClick={onEdit} className="gap-2 cursor-pointer">
