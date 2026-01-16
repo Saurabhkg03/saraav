@@ -120,3 +120,20 @@ export interface Report {
         solution?: string;
     }
 }
+
+export interface Message {
+    id: string;
+    text: string;
+    senderId: string;
+    senderName: string;
+    senderPhotoURL?: string; // Optional
+    createdAt: any; // Firestore Timestamp
+    editedAt?: any;
+    // Threading
+    replyToId?: string;
+    replyToSnippet?: string;
+    replyToSenderName?: string;
+    replyToSenderId?: string;
+    // Optimistic UI
+    status?: 'sending' | 'sent' | 'error';
+}

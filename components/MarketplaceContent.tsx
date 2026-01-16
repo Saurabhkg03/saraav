@@ -7,20 +7,26 @@ import { useMemo, useState } from "react";
 import { SubjectMetadata } from "@/lib/types";
 import { EmptyState } from "@/components/EmptyState";
 import { getColorClass } from "@/lib/utils";
+import { useGlobalData } from "@/context/GlobalDataContext";
 
 interface MarketplaceContentProps {
-    initialSubjects: SubjectMetadata[];
+    initialBundles?: SubjectMetadata[];
 }
 
-export function MarketplaceContent({ initialBundles }: { initialBundles: any[] }) {
+export function MarketplaceContent({ initialBundles = [] }: { initialBundles?: any[] }) {
     const { branch: userBranch, year: userYear, purchasedCourseIds } = useAuth();
+    const { bundles: globalBundles, loadingBundles } = useGlobalData();
+
+    // Prefer global bundles (real-time/cached), fall back to initialBundles (SSR)
+    const displayBundles = globalBundles.length > 0 ? globalBundles : initialBundles;
+
     const [selectedBranch, setSelectedBranch] = useState("");
     const [selectedSemester, setSelectedSemester] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
     // Filter bundles based on Branch, Semester, and Search Query
     const filteredBundles = useMemo(() => {
-        return initialBundles.filter(bundle => {
+        return displayBundles.filter(bundle => {
             // 1. Branch Filter
             if (selectedBranch && bundle.branch !== selectedBranch && bundle.branch !== "Common Electives") return false;
 
@@ -72,7 +78,7 @@ export function MarketplaceContent({ initialBundles }: { initialBundles: any[] }
 
             return semA - semB;
         });
-    }, [initialBundles, selectedBranch, selectedSemester, searchQuery]);
+    }, [displayBundles, selectedBranch, selectedSemester, searchQuery]);
 
     return (
         <div className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-black">
@@ -81,7 +87,7 @@ export function MarketplaceContent({ initialBundles }: { initialBundles: any[] }
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                             <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                                Semester Bundles
+                                Marketplace
                             </h1>
                             <p className="mt-2 text-zinc-500 dark:text-zinc-400">
                                 Select your semester to view available courses.

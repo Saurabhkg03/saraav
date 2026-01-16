@@ -6,7 +6,7 @@ import {
     User,
     GoogleAuthProvider,
     signInWithPopup,
-    signOut
+    signOut,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, getDocFromServer } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -61,8 +61,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!user) return;
         try {
             const userDocRef = doc(db, "users", user.uid);
-            // Force fetch from server to bypass local cache, ensuring we get the latest
-            // purchasedCourseIds updated by the API/Backend.
             const userDocSnap = await getDocFromServer(userDocRef);
 
             if (userDocSnap.exists()) {
@@ -79,6 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
+        // ✅ REVERTED: Removed the complex isMobile/getRedirectResult logic.
+        // We now rely solely on the standard auth listener which works for Popups.
+
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
             if (user) {
@@ -87,13 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 // Check Admin Status
                 try {
-                    // 1. FAST PATH: Custom Claims
                     const idTokenResult = await user.getIdTokenResult();
                     if (idTokenResult.claims.admin) {
                         setIsAdmin(true);
                     } else {
-                        // 2. SLOW PATH: API Check (Secure Fallback)
-                        // verifying via server instead of reading secure docs directly
                         try {
                             const token = await user.getIdToken();
                             const res = await fetch('/api/admin/set-claims', {
@@ -102,7 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             });
 
                             if (res.ok) {
-                                // If API says "Yes, I set your claims", refresh immediately
                                 const result = await res.json();
                                 if (result.success) {
                                     await user.getIdToken(true);
@@ -134,7 +131,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setYear(data.year);
                         setHasSeenWelcomeModal(data.hasSeenWelcomeModal || false);
                     } else {
-                        // Create user doc if it doesn't exist
                         await setDoc(userDocRef, {
                             email: user.email,
                             displayName: user.displayName,
@@ -164,9 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.error("Error fetching user data:", error);
                 }
             } else {
-                // Clear predictive flag
                 localStorage.removeItem('isLoggedIn');
-
                 setIsAdmin(false);
                 setPurchasedCourseIds([]);
                 setPurchases({});
@@ -181,11 +175,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, []);
 
+    // ✅ REVERTED: Simplified login function that works on both Desktop and Mobile
     const login = async () => {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({
             prompt: 'select_account'
         });
+
+        // Using Popup for everyone since you confirmed it works for you
         await signInWithPopup(auth, provider);
     };
 
@@ -195,28 +192,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const purchaseCourse = async (courseId: string) => {
         if (!user) return;
-
         try {
-            // Get current global settings for duration
             const settingsDoc = await getDoc(doc(db, "settings", "global"));
             const durationMonths = settingsDoc.exists() ? (settingsDoc.data().courseDurationMonths || 5) : 5;
-
             const purchaseDate = Date.now();
             const expiryDate = new Date();
             expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
-
             const purchaseData = {
                 purchaseDate,
                 expiryDate: expiryDate.getTime(),
                 durationMonths
             };
-
             const userDocRef = doc(db, "users", user.uid);
             await updateDoc(userDocRef, {
                 purchasedCourseIds: arrayUnion(courseId),
                 [`purchases.${courseId}`]: purchaseData
             });
-
             setPurchasedCourseIds(prev => [...prev, courseId]);
             setPurchases(prev => ({
                 ...prev,
@@ -230,25 +221,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const checkAccess = (courseId: string): boolean => {
         if (!purchasedCourseIds.includes(courseId)) return false;
-
-        // Check if we have extended purchase data
         const purchase = purchases?.[courseId];
         if (purchase) {
-            // Check expiry
-            if (Date.now() > purchase.expiryDate) {
-                return false; // Expired
-            }
-            return true; // Valid
+            if (Date.now() > purchase.expiryDate) return false;
+            return true;
         }
-
-        // Legacy support: If no purchase date recorded, assume valid (lifetime) 
-        // OR we could force a migration. For now, let's keep it valid to avoid breaking existing users.
         return true;
     };
 
     const updateProfile = async (data: { branch?: string; year?: string }) => {
         if (!user) return;
-
         try {
             const userDocRef = doc(db, "users", user.uid);
             await updateDoc(userDocRef, data);

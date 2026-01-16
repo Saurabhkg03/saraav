@@ -106,12 +106,16 @@ function MyCoursesContent() {
                 const subjectsA = group.subjects.filter(s => s.group === 'A');
                 const subjectsB = group.subjects.filter(s => s.group === 'B');
                 const subjectsCommon = group.subjects.filter(s => s.isCommon);
+                const subjectsGeneral = group.subjects.filter(s => s.group !== 'A' && s.group !== 'B' && !s.isCommon);
 
                 // Heuristic: Create Bundle A if specific A subjects exist, OR if we have only Common subjects (Default to A)
-                const shouldCreateA = subjectsA.length > 0 || (subjectsA.length === 0 && subjectsB.length === 0 && subjectsCommon.length > 0);
+                const shouldCreateA = subjectsA.length > 0 || (subjectsA.length === 0 && subjectsB.length === 0 && subjectsCommon.length > 0 && subjectsGeneral.length === 0);
 
                 // Heuristic: Create Bundle B only if specific B subjects exist
                 const shouldCreateB = subjectsB.length > 0;
+
+                // Heuristic: Create General Bundle if specific General subjects exist
+                const shouldCreateGeneral = subjectsGeneral.length > 0;
 
                 if (shouldCreateA) {
                     const keyA = 'FirstYear-GroupA';
@@ -131,6 +135,17 @@ function MyCoursesContent() {
                         branch: 'First Year - Group B',
                         semester: 'First Year',
                         subjects: [...subjectsB, ...subjectsCommon],
+                        lastPurchased: 0
+                    };
+                }
+
+                if (shouldCreateGeneral) {
+                    const keyGeneral = 'FirstYear-General';
+                    processedGroups[keyGeneral] = {
+                        key: keyGeneral,
+                        branch: 'First Year',
+                        semester: 'First Year',
+                        subjects: [...subjectsGeneral],
                         lastPurchased: 0
                     };
                 }
