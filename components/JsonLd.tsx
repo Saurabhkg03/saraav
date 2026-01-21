@@ -8,13 +8,15 @@ export default function JsonLd() {
         url: 'https://saraav.in',
         logo: 'https://saraav.in/logo.jpg',
         sameAs: [
-            'https://twitter.com/saraav_in', // Replace with actual if known, or remove
-            // Add other social profiles here
+            // REPLACE THESE with your REAL profiles. Do not leave them empty.
+            'https://www.linkedin.com/company/saraav-in',
+            'https://www.instagram.com/saraav.in'
         ],
         contactPoint: {
             '@type': 'ContactPoint',
-            telephone: '', // Add if available
+            //telephone: '', // Add if available
             contactType: 'customer support',
+            email: 'saraav.connect@gmail.com'
         },
     };
 
