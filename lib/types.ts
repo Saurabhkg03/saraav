@@ -136,4 +136,9 @@ export interface Message {
     replyToSenderId?: string;
     // Optimistic UI
     status?: 'sending' | 'sent' | 'error';
+    attachments?: {
+        url: string;
+        type: string; // 'image/png', 'application/pdf', etc.
+        name: string;
+    }[];
 }

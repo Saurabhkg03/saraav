@@ -139,8 +139,8 @@ export function useChannelMessages(channelId: string) {
 
     const flattenedMessages = data?.pages
         ? data.pages.flat().sort((a, b) => {
-            const tA = a.createdAt?.seconds || 0;
-            const tB = b.createdAt?.seconds || 0;
+            const tA = a.createdAt?.seconds || Number.MAX_SAFE_INTEGER;
+            const tB = b.createdAt?.seconds || Number.MAX_SAFE_INTEGER;
             return tA - tB; // Ascending order
         })
         : [];

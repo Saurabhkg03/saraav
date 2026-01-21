@@ -83,7 +83,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn(inter.className, "min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-200 antialiased")}>
+      <body className={cn(inter.className, "min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-200 antialiased")} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

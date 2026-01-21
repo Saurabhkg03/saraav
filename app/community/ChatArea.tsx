@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Channel } from "@/hooks/useBranchChat";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -15,7 +15,7 @@ import {
     Timestamp
 } from "firebase/firestore";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { Send, Loader2, ArrowLeft, X, Check, Reply } from "lucide-react";
+import { Send, Loader2, ArrowLeft, X, Check, Reply, Paperclip, FileIcon, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -27,11 +27,15 @@ import { useChannelMessages } from "@/hooks/useChannelMessages";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 import { Message } from "@/lib/types";
 import { MessageBubble } from "./MessageBubble";
+import { compressImage } from "@/lib/imageCompression";
+import { supabase } from "@/lib/supabase";
 
 interface ChatAreaProps {
     channel: Channel;
     onBack: () => void;
 }
+
+const START_INDEX = 10000;
 
 export function ChatArea({ channel, onBack }: ChatAreaProps) {
     const { user } = useAuth();
@@ -44,6 +48,11 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
     const [updating, setUpdating] = useState(false);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
+    // File Attachment State
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     // Optimistic UI State
     const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
 
@@ -54,24 +63,108 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
     const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Merge pending and server messages
-    // Strategy: Filter out pending messages that have been confirmed (exist in 'messages')
-    const combinedMessages = (() => {
+    // --- Virtuoso Index Management ---
+    // We use a stateful firstItemIndex to handle history prepending without shifting existing items.
+    // When messages are appended (new real-time), firstItemIndex stays same.
+    // When messages are prepended (history), firstItemIndex decreases.
+    const [firstItemIndex, setFirstItemIndex] = useState(START_INDEX);
+    const earliestMessageId = useRef<string | null>(null);
+
+    // Update firstItemIndex when history is loaded (prepended)
+    useEffect(() => {
+        if (messages.length > 0) {
+            const currentEarliestId = messages[0].id;
+
+            // Initial load
+            if (earliestMessageId.current === null) {
+                earliestMessageId.current = currentEarliestId;
+                // If we want to start at START_INDEX for the *initial* set:
+                // If initial set has N items. We want them to end at START_INDEX + N?
+                // Or just start at START_INDEX?
+                // Let's just stick to START_INDEX being the start of the *first loaded batch*.
+                // So initial reset is not needed if we default to START_INDEX.
+                // But we might want to shift it so the *bottom* is at a consistent place if needed?
+                // No, starting at 10000 is fine.
+            }
+            // Check for prepend
+            else if (currentEarliestId !== earliestMessageId.current) {
+                // Determine how many items were prepended.
+                // This is checking if the *head* changed.
+                // We rely on 'messages' being sorted.
+                // Note: This logic assumes 'messages' only grows (or stable updates).
+                // If we delete the top message, this might misfire, but that's rare/acceptable.
+
+                // We don't know exactly 'how many' were added just by ID change, 
+                // but we can assume the length diff is purely prepend if we are fetching history.
+                // However, real-time appends also change length.
+                // So we need to track length too?
+                // Actually, useChannelMessages is paginated.
+                // When we `fetchNextPage`, `messages` grows by 20 at start.
+                // We can assume if `messages[0].id` changed, it's a prepend.
+                // But how many?
+                // We can't easily know "how many" without previous length tracking.
+                // Let's assume we need to track previous length?
+                // Actually, if we just diff the length? 
+                // Total length change = (new items at start) + (new items at end).
+                // If we assume new items at end usually happens one by one or via subscription...
+                // Ideally we'd separate the data sources.
+            }
+        }
+    }, [messages]);
+
+    // Better approach simply with `useMemo` over the `messages` dependency
+    // We can't purely rely on effects for synchronous render consistency.
+    // Let's use the standard "adjust for prepends" pattern with a ref.
+    // We actually need to track the *previous* messages[0] to know if it changed.
+
+    // Derived state for combination
+    const combinedMessages = useMemo(() => {
         const serverIds = new Set(messages.map(m => m.id));
         const activePending = pendingMessages.filter(m => !serverIds.has(m.id));
 
-        // Combine and Sort
-        return [...messages, ...activePending].sort((a, b) => {
-            const tA = a.createdAt?.seconds || (typeof a.createdAt === 'number' ? a.createdAt / 1000 : 0);
-            const tB = b.createdAt?.seconds || (typeof b.createdAt === 'number' ? b.createdAt / 1000 : 0);
-            return tA - tB;
+        const all = [...messages, ...activePending].sort((a, b) => {
+            const tA = a.createdAt?.seconds || (typeof a.createdAt === 'number' ? a.createdAt / 1000 : Number.MAX_SAFE_INTEGER);
+            const tB = b.createdAt?.seconds || (typeof b.createdAt === 'number' ? b.createdAt / 1000 : Number.MAX_SAFE_INTEGER);
+            if (tA !== tB) return tA - tB;
+            const nA = (a.createdAt as any)?.nanoseconds || 0;
+            const nB = (b.createdAt as any)?.nanoseconds || 0;
+            return nA - nB;
         });
-    })();
+        return all;
+    }, [messages, pendingMessages]);
 
-    // Cleanup pending messages that are confirmed or too old?
-    // Actually the derived state `activePending` handles the "confirmed" part visually.
-    // We should periodically clean `pendingMessages` state to avoid memory leaks if desired, 
-    // but React state is small. Let's clean up on effect.
+    // Handle Index Shifting
+    const prevMessagesLength = useRef(0);
+    const prevFirstMessageId = useRef<string | null>(null);
+
+    useEffect(() => {
+        // If empty, reset
+        if (messages.length === 0) return;
+
+        const currentLength = messages.length;
+        const currentFirstId = messages[0].id;
+
+        // If this is the first non-empty load
+        if (prevMessagesLength.current === 0) {
+            prevMessagesLength.current = currentLength;
+            prevFirstMessageId.current = currentFirstId;
+            return;
+        }
+
+        // Detect Prepend: First message ID changed AND length increased
+        // (Assuming we don't bulk delete from top)
+        if (currentFirstId !== prevFirstMessageId.current && currentLength > prevMessagesLength.current) {
+            const addedCount = currentLength - prevMessagesLength.current;
+            // Decrease index to shift "up" into the empty space we reserved
+            setFirstItemIndex(prev => prev - addedCount);
+        }
+
+        prevMessagesLength.current = currentLength;
+        prevFirstMessageId.current = currentFirstId;
+    }, [messages]);
+
+
+    // Optimistic Cleanup
     useEffect(() => {
         if (pendingMessages.length === 0) return;
         const serverIds = new Set(messages.map(m => m.id));
@@ -82,7 +175,8 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
     }, [messages, pendingMessages]);
 
     const sendMessageLogic = async () => {
-        if (!newMessage.trim() || !user) return;
+        if ((!newMessage.trim() && selectedFiles.length === 0) || !user) return;
+
 
         if (containsProfanity(newMessage)) {
             alert("Your message contains inappropriate language and cannot be sent.");
@@ -92,16 +186,54 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
         // 1. Prepare Data
         const text = newMessage.trim();
         const messagesRef = collection(db, "channels", channel.id, "messages");
-        // Generate ID client-side
         const newMsgRef = doc(messagesRef);
         const newMsgId = newMsgRef.id;
 
-        const baseMessageData = {
+        // 1.5 Handle File Uploads
+        let attachments: { url: string, type: string, name: string }[] = [];
+
+        if (selectedFiles.length > 0) {
+            setIsUploading(true);
+            try {
+                const uploadPromises = selectedFiles.map(async (file) => {
+                    const fileToUpload = await compressImage(file);
+                    const formData = new FormData();
+                    formData.append('file', fileToUpload);
+                    formData.append('channelId', channel.id);
+                    const token = await user.getIdToken();
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+                    if (!response.ok) {
+                        const errData = await response.json();
+                        throw new Error(errData.error || 'Upload failed');
+                    }
+                    const result = await response.json();
+                    return { url: result.url, type: result.type, name: result.name };
+                });
+                attachments = await Promise.all(uploadPromises);
+            } catch (err) {
+                console.error("Failed to upload files", err);
+                alert("Failed to upload files. Please try again.");
+                setIsUploading(false);
+                return;
+            } finally {
+                setIsUploading(false);
+            }
+        }
+
+        const baseMessageData: any = {
             text: text,
             senderId: user.uid,
             senderName: user.displayName || "Anonymous",
             senderPhotoURL: user.photoURL || undefined,
         };
+
+        if (attachments.length > 0) {
+            baseMessageData.attachments = attachments;
+        }
 
         const replyData = replyingTo ? {
             replyToId: replyingTo.id,
@@ -115,33 +247,25 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
             id: newMsgId,
             ...baseMessageData,
             ...replyData,
-            createdAt: Timestamp.now(), // Use real Timestamp for compatibility
+            createdAt: Timestamp.now(),
             status: 'sending'
         };
 
         setPendingMessages(prev => [...prev, optimisticMessage]);
         setNewMessage("");
         setReplyingTo(null);
-
-        // Scroll immediately
-        requestAnimationFrame(() => {
-            virtuosoRef.current?.scrollToIndex({ index: 10000, align: 'end', behavior: 'smooth' });
-        });
+        setSelectedFiles([]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
 
         // 3. Send to Server
-        // We use setDoc with the ID we generated
         try {
             await setDoc(newMsgRef, {
                 ...baseMessageData,
                 ...replyData,
-                createdAt: serverTimestamp() // Server overwrites time
+                createdAt: serverTimestamp()
             });
-            // Success! The snapshot listener will eventually pick it up.
-            // When it picks it up, it will be in `messages`, so `activePending` will hide this optimistic one.
-
         } catch (error) {
             console.error("Error sending message:", error);
-            // Mark as error
             setPendingMessages(prev => prev.map(m => m.id === newMsgId ? { ...m, status: 'error' } : m));
             alert("Failed to send message.");
         }
@@ -162,6 +286,26 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
         setIsDeleting(true);
 
         try {
+            const message = combinedMessages.find(m => m.id === idToDelete);
+            if (message && message.attachments && message.attachments.length > 0) {
+                const pathsToDelete = message.attachments.map(att => {
+                    const url = new URL(att.url);
+                    const match = url.pathname.match(/chat-attachments\/(.*)/);
+                    return match ? decodeURIComponent(match[1]) : null;
+                }).filter(p => p !== null) as string[];
+
+                if (pathsToDelete.length > 0 && user) {
+                    const token = await user.getIdToken();
+                    await fetch('/api/delete-file', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ paths: pathsToDelete })
+                    });
+                }
+            }
             await deleteDoc(doc(db, "channels", channel.id, "messages", idToDelete));
         } catch (error) {
             console.error("Error deleting message:", error);
@@ -174,12 +318,10 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
 
     const updateMessageWithArgs = async (id: string, text: string) => {
         if (!text.trim()) return;
-
         if (containsProfanity(text)) {
             alert("Your edited message contains inappropriate language.");
             return;
         }
-
         setUpdating(true);
         try {
             const msgRef = doc(db, "channels", channel.id, "messages", id);
@@ -196,13 +338,6 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
         }
     };
 
-    const handleUpdateMessage = () => {
-        // Keep for backward compat or just redirect
-        if (editingDetails) {
-            updateMessageWithArgs(editingDetails.id, editingDetails.text);
-        }
-    };
-
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -210,7 +345,6 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
         }
     };
 
-    // Render Item for Virtuoso
     const itemContent = (index: number, msg: Message) => {
         const isMe = msg.senderId === user?.uid;
         const prevMsg = combinedMessages[index - 1];
@@ -218,22 +352,11 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
 
         const isSameSenderPrev = prevMsg && prevMsg.senderId === msg.senderId;
         const isSameSenderNext = nextMsg && nextMsg.senderId === msg.senderId;
-        const showAvatar = !isMe && (!isSameSenderPrev); // Avatar on last message of group? No, wait.
-        // If !isMe:
-        //  Avatar usually shown at bottom (next different). 
-        //  Name shown at top (prev different).
-
-        // Let's stick to previous logic:
-        // Avatar logic in previous code:
-        // {!isMe && !isSameSenderNext ? <Avatar ... /> : ...} -> Shown if next is different
-        // Name logic:
-        // {showName && ...} -> showName defined as !isMe && !isSameSenderPrev -> Shown if prev is different
-
         const showAvatarCalculated = !isMe && !isSameSenderNext;
         const showNameCalculated = !isMe && !isSameSenderPrev;
 
         return (
-            <div className={cn(isSameSenderNext ? "mb-0.5" : "mb-4")}>
+            <div className={cn(isSameSenderNext ? "mb-[2px]" : "mb-4")}>
                 <MessageBubble
                     message={msg}
                     isMe={isMe}
@@ -248,16 +371,7 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
                     onEdit={(m) => setEditingDetails({ id: m.id, text: m.text })}
                     onDelete={(id) => handleDeleteClick(id)}
                     onUpdate={(id, text) => {
-                        // We need to call handleUpdateMessage but it uses state `editingDetails` 
-                        // which is updated via setEditingDetails.
-                        // But `MessageBubble` calls `onUpdate` with the text directly.
-                        // So we should update state then call update? 
-                        // Or refactor handleUpdateMessage to accept args.
-                        // Refactoring handleUpdateMessage below to accept args would be cleaner.
-                        // For now, let's wrap it.
                         setEditingDetails({ id, text });
-                        // The state update is async, so we can't call handleUpdateMessage immediately if it relies on state.
-                        // Better: Refactor handleUpdateMessage to take args.
                         updateMessageWithArgs(id, text);
                     }}
                     onCancelEdit={() => setEditingDetails(null)}
@@ -268,6 +382,30 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
 
     return (
         <div className="flex h-full flex-col bg-zinc-50 dark:bg-black">
+            <input
+                type="file"
+                multiple
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/png, image/jpeg, image/webp, application/pdf"
+                onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length + selectedFiles.length > 3) {
+                        alert("You can only attach up to 3 files.");
+                        return;
+                    }
+                    const validFiles = files.filter(f => {
+                        if (f.size > 5 * 1024 * 1024) {
+                            alert(`File ${f.name} is too large (>5MB).`);
+                            return false;
+                        }
+                        return true;
+                    });
+                    setSelectedFiles(prev => [...prev, ...validFiles]);
+                    e.target.value = '';
+                }}
+            />
+
             <div className="flex items-center gap-3 border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80 md:px-6 md:py-4 z-10 sticky top-0">
                 <Button variant="ghost" size="icon" className="md:hidden -ml-2 shrink-0 rounded-full" onClick={onBack}>
                     <ArrowLeft className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
@@ -307,20 +445,43 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
                     ref={virtuosoRef}
                     data={combinedMessages}
                     itemContent={itemContent}
+                    firstItemIndex={firstItemIndex}
+                    initialTopMostItemIndex={combinedMessages.length - 1}
                     startReached={() => {
                         if (hasNextPage && !isFetchingNextPage) {
                             fetchNextPage();
                         }
                     }}
-                    firstItemIndex={Math.max(0, 10000 - combinedMessages.length)}
-                    initialTopMostItemIndex={Math.max(0, 10000 - 1)}
-                    followOutput="auto"
+                    followOutput="smooth"
                     alignToBottom
                     className="h-full scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 z-10 relative"
                 />
             </div>
 
             <div className="bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 z-20">
+                {selectedFiles.length > 0 && (
+                    <div className="px-4 pt-3 flex gap-2 overflow-x-auto">
+                        {selectedFiles.map((file, i) => (
+                            <div key={i} className="relative group bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2 w-24 h-24 flex-shrink-0 flex flex-col items-center justify-center">
+                                <button
+                                    onClick={() => setSelectedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                    className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                                {file.type.startsWith('image/') ? (
+                                    <div className="w-full h-full relative">
+                                        <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover rounded" />
+                                    </div>
+                                ) : (
+                                    <FileIcon className="h-8 w-8 text-indigo-500 mb-1" />
+                                )}
+                                <span className="text-[10px] text-zinc-500 truncate w-full text-center">{file.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {replyingTo && (
                     <div className="flex items-center justify-between px-4 py-2 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2 overflow-hidden">
@@ -339,8 +500,19 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
                 <div className="p-4 max-w-4xl mx-auto">
                     <form
                         onSubmit={handleSendMessage}
-                        className="flex items-end gap-2 bg-zinc-100 dark:bg-zinc-900 p-2 pl-4 rounded-[24px] shadow-sm border border-transparent focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all dark:border-zinc-800"
+                        className="flex items-end gap-2 bg-zinc-100 dark:bg-zinc-900 p-2 pl-2 rounded-[24px] shadow-sm border border-transparent focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all dark:border-zinc-800"
                     >
+                        <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="h-10 w-10 shrink-0 rounded-full text-zinc-400 hover:text-indigo-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                            disabled={sending || isUploading || selectedFiles.length >= 3}
+                        >
+                            <Paperclip className="h-5 w-5" />
+                        </Button>
+
                         <Textarea
                             value={newMessage}
                             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewMessage(e.target.value)}
@@ -352,16 +524,16 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
                         />
                         <Button
                             type="submit"
-                            disabled={sending || !newMessage.trim()}
+                            disabled={sending || isUploading || (!newMessage.trim() && selectedFiles.length === 0)}
                             size="icon"
                             className={cn(
                                 "h-10 w-10 shrink-0 rounded-full transition-all mb-1 mr-1",
-                                newMessage.trim()
+                                (newMessage.trim() || selectedFiles.length > 0) && !sending && !isUploading
                                     ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transform hover:scale-105 active:scale-95"
                                     : "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600"
                             )}
                         >
-                            {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5 ml-0.5" />}
+                            {sending || isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5 ml-0.5" />}
                         </Button>
                     </form>
                 </div>
@@ -376,3 +548,4 @@ export function ChatArea({ channel, onBack }: ChatAreaProps) {
         </div>
     );
 }
+
