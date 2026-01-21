@@ -30,14 +30,15 @@ export const metadata: Metadata = {
   keywords: ["SGBAU", "Amravati University", "Engineering Exams", "PYQ", "Previous Year Questions", "Exam Prep", "Saraav", "Engineering Solutions"],
 
   icons: {
+    // FIX: Ensure this matches what you want users to see. 
+    // If 'logo.jpg' is your main brand image, use it here too.
     icon: [
+      { url: '/logo.jpg', sizes: '192x192', type: 'image/jpeg' },
       { url: '/favicon.ico' },
-      // Prefer logo.jpg if icon.png is not optimal, or stick to icon.png if it's the favicon version. 
-      // User has `icon.png` in public, keeping it.
-      { url: '/icon.png', sizes: '192x192', type: 'image/png' },
     ],
+    shortcut: ['/logo.jpg'],
     apple: [
-      { url: '/icon.png' },
+      { url: '/logo.jpg' },
     ],
   },
 
