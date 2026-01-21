@@ -37,7 +37,7 @@ export function MessageMenu({
     return (
         <>
             <DropdownMenu modal={false}>
-                <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 outline-none">
+                <DropdownMenuTrigger className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity focus:opacity-100 p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 outline-none">
                     <MoreVertical className="h-5 w-5 text-zinc-500 dark:text-zinc-400" strokeWidth={2.5} />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={isMe ? "end" : "start"}>

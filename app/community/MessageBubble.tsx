@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageMenu } from "./MessageMenu";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { ImageViewer } from "@/components/ImageViewer";
 import { Textarea } from "@/components/ui/textarea";
-import { X, Check, Loader2 } from "lucide-react";
+import { X, Check, Loader2, FileIcon, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface MessageBubbleProps {
@@ -43,6 +44,8 @@ export function MessageBubble({
     onCancelEdit
 }: MessageBubbleProps) {
     const [editText, setEditText] = useState(msg.text);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerSrc, setViewerSrc] = useState<string | null>(null);
 
     // Sync editText if message text changes or editing state changes
     useEffect(() => {
@@ -56,13 +59,13 @@ export function MessageBubble({
     const smartRadius = isMe
         ? cn(
             "rounded-2xl",
-            isSameSenderPrev ? "rounded-tr-md" : "rounded-tr-sm",
-            isSameSenderNext ? "rounded-br-md" : "rounded-br-2xl"
+            isSameSenderPrev ? "rounded-tr-sm" : "rounded-tr-2xl",
+            isSameSenderNext ? "rounded-br-sm" : "rounded-br-2xl"
         )
         : cn(
             "rounded-2xl",
-            isSameSenderPrev ? "rounded-tl-md" : "rounded-tl-sm",
-            isSameSenderNext ? "rounded-bl-md" : "rounded-bl-2xl"
+            isSameSenderPrev ? "rounded-tl-sm" : "rounded-tl-2xl",
+            isSameSenderNext ? "rounded-bl-sm" : "rounded-bl-2xl"
         );
 
     return (
@@ -167,6 +170,49 @@ export function MessageBubble({
                         ) : (
                             <>
                                 <MarkdownRenderer content={msg.text} className={cn("text-[14.5px]", isMe ? "text-white" : "")} />
+                                {msg.attachments && msg.attachments.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {msg.attachments.map((attachment, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={cn(
+                                                    "block overflow-hidden transition-all hover:opacity-90 max-w-full cursor-pointer",
+                                                    attachment.type.startsWith('image/') ? "rounded-lg" : "rounded-md bg-white/10 p-2 flex items-center gap-2 border border-white/20"
+                                                )}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (attachment.type.startsWith('image/')) {
+                                                        setViewerSrc(attachment.url);
+                                                        setViewerOpen(true);
+                                                    } else {
+                                                        window.open(attachment.url, '_blank');
+                                                    }
+                                                }}
+                                            >
+                                                {attachment.type.startsWith('image/') ? (
+                                                    <img
+                                                        src={attachment.url}
+                                                        alt={attachment.name}
+                                                        className="max-h-60 max-w-full object-cover rounded-lg bg-black/20"
+                                                        loading="lazy"
+                                                    />
+                                                ) : (
+                                                    <div className="flex items-center gap-2 text-sm">
+                                                        <FileIcon className="h-4 w-4" />
+                                                        <span className="truncate max-w-[150px] underline decoration-dotted underline-offset-2">{attachment.name}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {viewerSrc && (
+                                    <ImageViewer
+                                        isOpen={viewerOpen}
+                                        src={viewerSrc}
+                                        onClose={() => { setViewerOpen(false); setViewerSrc(null); }}
+                                    />
+                                )}
                                 <div className={cn(
                                     "flex items-center justify-end gap-1 mt-0.5 select-none",
                                     isMe ? "text-indigo-100/70" : "text-zinc-400"
