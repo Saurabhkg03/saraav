@@ -27,18 +27,30 @@ export function SolutionModal({ isOpen, onClose, content }: SolutionModalProps) 
     }, [onClose]);
 
     // Scroll Lock Effect
-    // Scroll Lock Effect
     useEffect(() => {
-        if (isOpen) {
-            // Prevent background scrolling
-            document.body.style.overflow = 'hidden';
-            // Also prevent overscroll chaining on body just in case
-            document.body.style.overscrollBehavior = 'none';
-        }
+        const handleScrollLock = () => {
+            const isMobile = window.matchMedia('(max-width: 767px)').matches;
+            if (isOpen && isMobile) {
+                // Prevent background scrolling
+                document.body.style.overflow = 'hidden';
+                // Also prevent overscroll chaining on body just in case
+                document.body.style.overscrollBehavior = 'none';
+            } else {
+                // Unlock if not mobile or not open
+                document.body.style.overflow = 'unset';
+                document.body.style.overscrollBehavior = 'unset';
+            }
+        };
+
+        handleScrollLock(); // Initial check
+
+        // Listen for resize to toggle lock if window size crosses breakpoint
+        window.addEventListener('resize', handleScrollLock);
+
         return () => {
+            window.removeEventListener('resize', handleScrollLock);
             document.body.style.overflow = 'unset';
             document.body.style.overscrollBehavior = 'unset';
-            // Restore simpler state if needed, 'unset' usually reverts to stylesheet
         };
     }, [isOpen]);
 
