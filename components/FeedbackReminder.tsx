@@ -28,10 +28,10 @@ export function FeedbackReminder() {
                     // Show toast after a delay (e.g., 2 minutes)
                     // For demo/testing purposes, you might want to lower this locally, 
                     // but user requested "don't make it annoying".
-                    // Let's settle on 2 minutes (120000ms).
+                    // Let's settle on 5 minutes (300000ms).
                     setTimeout(() => {
                         showFeedbackToast();
-                    }, 120000);
+                    }, 300000);
                 }
             } catch (error) {
                 console.error("Error in feedback reminder logic:", error);
