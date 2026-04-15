@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req: Request) {
     try {
-        const { courseId, courseIds } = await req.json();
+        const { courseId, courseIds, bundleId } = await req.json();
 
         // 1. Get Token
         const authHeader = req.headers.get('Authorization');
@@ -64,8 +64,35 @@ export async function POST(req: Request) {
             updates[`purchases.${cid}`] = purchaseData;
         });
 
-        await adminDb.collection('users').doc(userId).update(updates);
+        // Write batch: Update user and increment analytics
+        const batch = adminDb.batch();
+        const userRef = adminDb.collection('users').doc(userId);
+        const analyticsRef = adminDb.collection('admin_data').doc('analytics');
+        
+        const today = new Date().toISOString().split('T')[0];
+        const dailyRecordRef = adminDb.collection('admin_data').doc('analytics_daily').collection('days').doc(today);
 
+        const analyticsUpdates: Record<string, any> = {
+            totalEnrollments: FieldValue.increment(coursesToEnroll.length)
+        };
+        coursesToEnroll.forEach((cid: string) => {
+            analyticsUpdates[`courseEnrollmentCounts.${cid}`] = FieldValue.increment(1);
+        });
+        
+        if (bundleId) {
+            analyticsUpdates[`bundleEnrollmentCounts.${bundleId}`] = FieldValue.increment(1);
+        }
+
+        const dailyUpdates: Record<string, any> = {
+            date: today,
+            totalNewEnrollments: FieldValue.increment(courseIds && bundleId ? 1 : coursesToEnroll.length) // Group bundles as 1 enrollment hit visually or courses length
+        };
+
+        batch.update(userRef, updates);
+        batch.set(analyticsRef, analyticsUpdates, { merge: true });
+        batch.set(dailyRecordRef, dailyUpdates, { merge: true });
+        
+        await batch.commit();
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error enrolling user:', error);

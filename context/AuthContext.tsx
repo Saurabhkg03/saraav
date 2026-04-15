@@ -144,6 +144,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setHasSeenWelcomeModal(false);
                     }
 
+                    // Fire-and-forget: track login session for DAU
+                    user.getIdToken().then(token => {
+                        fetch('/api/admin/tracking', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ event: 'login' })
+                        }).catch(() => {}); // silent fail
+                    });
+
                     // Listen to progress subcollection
                     import("firebase/firestore").then(({ collection, onSnapshot }) => {
                         const progressCollectionRef = collection(db, "users", user.uid, "progress");

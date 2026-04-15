@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Upload, Trash2, BookOpen, Flag, MessageSquare, Megaphone, Download } from 'lucide-react';
+import { Plus, Upload, Trash2, BookOpen, Flag, MessageSquare, Megaphone, Download, BarChart } from 'lucide-react';
 // import { useSubjects } from '@/hooks/useSubjects'; // REMOVED
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -426,6 +426,14 @@ export default function AdminPage() {
                             />
                         </div>
                     </div>
+
+                    <button
+                        onClick={() => router.push('/admin/analytics')}
+                        className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+                    >
+                        <BarChart className="h-4 w-4" />
+                        Analytics
+                    </button>
 
                     <button
                         onClick={() => router.push('/admin/reports')}
