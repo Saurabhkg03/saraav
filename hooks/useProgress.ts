@@ -63,8 +63,29 @@ export function useProgress(subjectId: string) {
             nextReview,
         };
 
+        const isNewCompletion = status !== 'hard' && status !== 'medium' && (!progressMap[questionId] || progressMap[questionId]?.status === 'hard' || progressMap[questionId]?.status === 'medium');
+
         const updatedMap = { ...progressMap, [questionId]: newProgress };
         setProgressMap(updatedMap); // Optimistic
+
+        // Fire and forget tracking
+        user.getIdToken().then(token => {
+            // Track Attempt
+            fetch('/api/admin/tracking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ event: 'questionAttempted' })
+            }).catch(console.error);
+
+            // Track Done tick if marked easy and wasn't before
+            if (isNewCompletion) {
+                fetch('/api/admin/tracking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ event: 'questionDone' })
+                }).catch(console.error);
+            }
+        });
 
         try {
             const docRef = doc(db, "users", user.uid, "progress", subjectId);

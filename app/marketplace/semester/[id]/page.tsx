@@ -340,6 +340,7 @@ export default function SemesterBundlePage() {
                                         courseIds={unownedCourseIds}
                                         amount={bundlePrice}
                                         courseName={`${branch} - ${semester} Bundle`}
+                                        bundleId={bundleId}
                                     />
                                 )}
                             </div>
@@ -383,6 +384,7 @@ export default function SemesterBundlePage() {
                                 amount={bundlePrice}
                                 courseName={`${branch} - ${semester} Bundle`}
                                 className="w-full py-3"
+                                bundleId={bundleId}
                             />
                         )}
                     </div>

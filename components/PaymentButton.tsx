@@ -14,10 +14,11 @@ interface PaymentButtonProps {
     courseIds?: string[];
     amount: number;
     courseName: string;
+    bundleId?: string;
     className?: string;
 }
 
-export function PaymentButton({ courseId, courseIds, amount, courseName, className }: PaymentButtonProps) {
+export function PaymentButton({ courseId, courseIds, amount, courseName, bundleId, className }: PaymentButtonProps) {
     const [loading, setLoading] = useState(false);
     const { user, refreshUser } = useAuth();
     const { settings, loading: settingsLoading } = useSettings();
@@ -44,6 +45,7 @@ export function PaymentButton({ courseId, courseIds, amount, courseName, classNa
                     body: JSON.stringify({
                         courseId,
                         courseIds,
+                        bundleId,
                     }),
                 });
 
@@ -116,6 +118,7 @@ export function PaymentButton({ courseId, courseIds, amount, courseName, classNa
                                 razorpay_signature: response.razorpay_signature,
                                 courseId,
                                 courseIds,
+                                bundleId,
                             }),
                         });
 
