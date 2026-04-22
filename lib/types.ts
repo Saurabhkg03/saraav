@@ -85,6 +85,7 @@ export interface UserProfile {
     year?: string;
     progress: {
         [subjectId: string]: {
+            lastAccessed?: number;
             questions: { [questionId: string]: QuestionProgress }
         }
     };

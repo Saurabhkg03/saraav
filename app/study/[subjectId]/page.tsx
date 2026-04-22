@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, AlertCircle, Plus, ListChecks, Settings, Download, Star, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, BookOpen, AlertCircle, Plus, ListChecks, Settings, Download, Star, ChevronDown, ChevronUp, ChevronsUp } from "lucide-react";
 import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore"; // Added updateDoc, setDoc
 import { db } from "@/lib/firebase";
 import { Subject, SubjectMetadata, Unit, Question } from "@/lib/types"; // Added Question
@@ -14,6 +14,7 @@ import { useProgress } from "@/hooks/useProgress";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { QuestionGuideModal } from "@/components/modals/QuestionGuideModal";
+import { PaymentButton } from "@/components/PaymentButton";
 
 export default function SubjectPage() {
     const params = useParams();
@@ -33,7 +34,7 @@ export default function SubjectPage() {
     const [showGuide, setShowGuide] = useState(false);
 
     const { progressMap, updateStatus, toggleStar, saveNote, getNote, loading: progressLoading } = useProgress(subjectId);
-    const { isAdmin, user, checkAccess, loading: authLoading } = useAuth(); // Removed purchasedCourseIds
+    const { isAdmin, user, getAccessStatus, loading: authLoading } = useAuth(); // Removed purchasedCourseIds
 
     useEffect(() => {
         if (user) {
@@ -64,11 +65,13 @@ export default function SubjectPage() {
             // Allow admins to bypass
             if (isAdmin) return;
 
-            if (!checkAccess(subjectId)) {
+            const status = getAccessStatus(subjectId);
+            if (status === "not_purchased") {
                 router.push(`/marketplace/${subjectId}`);
             }
+            // "expired" is handled by showing an expired screen inline (not a redirect)
         }
-    }, [user, authLoading, loading, checkAccess, subjectId, router, isAdmin]);
+    }, [user, authLoading, loading, getAccessStatus, subjectId, router, isAdmin]);
 
     const fetchSolution = async (questionId: string) => {
         if (loadedSolutions[questionId]) return;
@@ -192,8 +195,15 @@ export default function SubjectPage() {
         };
 
         fetchSubjectData();
-        fetchSubjectData();
     }, [subjectId]);
+
+    // Track last visited subject
+    useEffect(() => {
+        if (user && subjectId) {
+            const docRef = doc(db, "users", user.uid, "progress", subjectId);
+            setDoc(docRef, { lastAccessed: Date.now() }, { merge: true }).catch(console.error);
+        }
+    }, [user, subjectId]);
 
     // Handle Deep Linking
     useEffect(() => {
@@ -248,6 +258,62 @@ export default function SubjectPage() {
                 <Link href="/" className="mt-6 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100">
                     Return Home
                 </Link>
+            </div>
+        );
+    }
+
+    const isExpired = !isAdmin && getAccessStatus(subjectId) === "expired";
+
+    // Show full-page expired screen — block all content access
+    if (isExpired) {
+        return (
+            <div className="container mx-auto px-4 py-8">
+                <Link
+                    href="/courses"
+                    className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to My Courses
+                </Link>
+
+                <div className="mt-16 flex flex-col items-center justify-center text-center">
+                    {/* Icon */}
+                    <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/20">
+                        <AlertCircle className="h-10 w-10 text-red-500" />
+                    </div>
+
+                    {/* Subject name */}
+                    <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-red-500">
+                        Access Expired
+                    </p>
+                    <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                        {metadata.title}
+                    </h1>
+                    <p className="mt-4 max-w-md text-base text-zinc-500 dark:text-zinc-400">
+                        Your access to this subject has expired. Renew your subscription to continue studying and track your progress.
+                    </p>
+
+                    {/* Actions */}
+                    <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
+                        <Link
+                            href={`/marketplace/${subjectId}`}
+                            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        >
+                            Renew Access
+                        </Link>
+                        <Link
+                            href="/courses"
+                            className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        >
+                            My Courses
+                        </Link>
+                    </div>
+
+                    {/* Progress preserved note */}
+                    <p className="mt-6 text-xs text-zinc-400 dark:text-zinc-600">
+                        Your progress has been saved and will be restored after renewal.
+                    </p>
+                </div>
             </div>
         );
     }
@@ -391,7 +457,23 @@ export default function SubjectPage() {
 
             {/* Content */}
             <div className="space-y-8">
-                {activeTab === 'questions' || activeTab === 'favourites' ? (
+                {isExpired ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-red-200 bg-red-50 py-16 text-center dark:border-red-900/50 dark:bg-red-900/20 px-4">
+                        <AlertCircle className="mb-4 h-12 w-12 text-red-500" />
+                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Course Access Expired</h2>
+                        <p className="mt-2 text-zinc-500 dark:text-zinc-400">
+                            Your access to {metadata.title} has expired. Please renew your enrollment to continue learning and tracking your progress.
+                        </p>
+                        <div className="mt-8 flex w-full max-w-sm flex-col gap-4">
+                            <PaymentButton
+                                courseId={subjectId}
+                                amount={metadata.price || 0}
+                                courseName={metadata.title}
+                                isRenewing={true}
+                            />
+                        </div>
+                    </div>
+                ) : activeTab === 'questions' || activeTab === 'favourites' ? (
                     <div className="space-y-8">
                         {metadata?.units.map((unitSummary) => {
                             const isExpanded = expandedUnits.has(unitSummary.id);
@@ -498,6 +580,21 @@ export default function SubjectPage() {
                     metadata && <SyllabusView units={metadata.units} />
                 )}
             </div>
+
+            {/* Floating Collapse All button - only visible when units are expanded */}
+            {expandedUnits.size > 0 && activeTab === 'questions' && (
+                <button
+                    onClick={() => setExpandedUnits(new Set())}
+                    className={cn(
+                        "fixed right-4 z-40 flex items-center gap-1.5 rounded-full bg-zinc-800 px-3 py-2 text-xs font-semibold text-white shadow-lg ring-1 ring-zinc-700 transition-all hover:bg-zinc-700 active:scale-95 dark:bg-zinc-700 dark:ring-zinc-600 dark:hover:bg-zinc-600",
+                        user ? "bottom-[calc(55px+1rem)]" : "bottom-4"  // sit above BottomNav on mobile
+                    )}
+                    title="Collapse all units"
+                >
+                    <ChevronsUp className="h-3.5 w-3.5" />
+                    Collapse All
+                </button>
+            )}
 
             <QuestionGuideModal
                 isOpen={showGuide}

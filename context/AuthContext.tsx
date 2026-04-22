@@ -28,6 +28,7 @@ interface AuthContextType {
     updateProfile: (data: { branch?: string; year?: string }) => Promise<void>;
     markWelcomeModalAsSeen: () => Promise<void>;
     checkAccess: (courseId: string) => boolean;
+    getAccessStatus: (courseId: string) => "not_purchased" | "active" | "expired";
     refreshUser: () => Promise<void>;
 }
 
@@ -43,6 +44,7 @@ const AuthContext = createContext<AuthContextType>({
     updateProfile: async () => { },
     markWelcomeModalAsSeen: async () => { },
     checkAccess: () => false,
+    getAccessStatus: () => "not_purchased" as const,
     refreshUser: async () => { },
 });
 
@@ -65,8 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (userDocSnap.exists()) {
                 const data = userDocSnap.data();
-                setPurchasedCourseIds(data.purchasedCourseIds || []);
-                setPurchases(data.purchases || {});
+                const rawPurchasedIds: string[] = data.purchasedCourseIds || [];
+                const rawPurchases: UserProfile['purchases'] = data.purchases || {};
+
+                // Keep ALL purchased IDs in local state (including expired ones)
+                // so getAccessStatus can correctly return 'expired' and the study
+                // page can show the re-enroll banner instead of redirecting.
+                setPurchasedCourseIds(rawPurchasedIds);
+                setPurchases(rawPurchases);
                 setBranch(data.branch);
                 setYear(data.year);
                 setHasSeenWelcomeModal(data.hasSeenWelcomeModal || false);
@@ -125,11 +133,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                     if (userDocSnap.exists()) {
                         const data = userDocSnap.data();
-                        setPurchasedCourseIds(data.purchasedCourseIds || []);
-                        setPurchases(data.purchases || {});
+                        const rawPurchasedIds: string[] = data.purchasedCourseIds || [];
+                        const rawPurchases: UserProfile['purchases'] = data.purchases || {};
+
+                        // Keep ALL purchased IDs in local state (including expired ones)
+                        // getAccessStatus uses the purchases map to return 'expired' status,
+                        // so the study page can show the re-enroll banner instead of redirecting.
+                        setPurchasedCourseIds(rawPurchasedIds);
+                        setPurchases(rawPurchases);
                         setBranch(data.branch);
                         setYear(data.year);
                         setHasSeenWelcomeModal(data.hasSeenWelcomeModal || false);
+
+                        // --- Background Expiry Revocation (syncs Firestore) ---
+                        // Detect expired courses and fire-and-forget a Firestore cleanup.
+                        // This keeps the DB tidy so security rules based on purchasedCourseIds
+                        // won't grant stale access.
+                        const now = Date.now();
+                        const expiredIds = rawPurchasedIds.filter(id => {
+                            const p = rawPurchases?.[id];
+                            return p && p.expiryDate && now > p.expiryDate;
+                        });
+
+                        if (expiredIds.length > 0) {
+                            console.log(`[AuthContext] Detected ${expiredIds.length} expired course(s), syncing to DB:`, expiredIds);
+                            user.getIdToken().then(token => {
+                                fetch('/api/user/revoke-expired', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({ expiredIds })
+                                }).catch(err => console.error('[AuthContext] Revoke-expired API error:', err));
+                            });
+                        }
                     } else {
                         await setDoc(userDocRef, {
                             email: user.email,
@@ -229,13 +267,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const checkAccess = (courseId: string): boolean => {
-        if (!purchasedCourseIds.includes(courseId)) return false;
+        return getAccessStatus(courseId) === "active";
+    };
+
+    const getAccessStatus = (courseId: string): "not_purchased" | "active" | "expired" => {
+        if (!purchasedCourseIds.includes(courseId)) return "not_purchased";
         const purchase = purchases?.[courseId];
         if (purchase) {
-            if (Date.now() > purchase.expiryDate) return false;
-            return true;
+            // If purchase data exists, honour the expiryDate
+            if (!purchase.expiryDate) return "active"; // legacy entry with no expiry = perpetual
+            if (Date.now() > purchase.expiryDate) return "expired";
+            return "active";
         }
-        return true;
+        // No purchase record but ID is in purchasedCourseIds → treat as active (legacy / grandfathered)
+        return "active";
     };
 
     const updateProfile = async (data: { branch?: string; year?: string }) => {
@@ -263,7 +308,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, isAdmin, purchasedCourseIds, branch, year, hasSeenWelcomeModal, progress, login, logout, purchaseCourse, updateProfile, markWelcomeModalAsSeen, checkAccess, purchases, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, isAdmin, purchasedCourseIds, branch, year, hasSeenWelcomeModal, progress, login, logout, purchaseCourse, updateProfile, markWelcomeModalAsSeen, checkAccess, getAccessStatus, purchases, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

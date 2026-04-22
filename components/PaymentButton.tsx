@@ -16,9 +16,10 @@ interface PaymentButtonProps {
     courseName: string;
     bundleId?: string;
     className?: string;
+    isRenewing?: boolean;
 }
 
-export function PaymentButton({ courseId, courseIds, amount, courseName, bundleId, className }: PaymentButtonProps) {
+export function PaymentButton({ courseId, courseIds, amount, courseName, bundleId, className, isRenewing }: PaymentButtonProps) {
     const [loading, setLoading] = useState(false);
     const { user, refreshUser } = useAuth();
     const { settings, loading: settingsLoading } = useSettings();
@@ -196,7 +197,9 @@ export function PaymentButton({ courseId, courseIds, amount, courseName, bundleI
                 ) : (
                     <>
                         {settings.isPaymentEnabled ? <Lock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
-                        {settings.isPaymentEnabled ? `Enroll Now - ₹${amount}` : 'Enroll for Free'}
+                        {settings.isPaymentEnabled 
+                            ? (isRenewing ? `Renew Course - ₹${amount}` : `Enroll Now - ₹${amount}`) 
+                            : (isRenewing ? 'Renew for Free' : 'Enroll for Free')}
                     </>
                 )}
             </div>

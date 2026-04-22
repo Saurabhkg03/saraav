@@ -19,27 +19,28 @@ interface SubjectDetailsProps {
 }
 
 export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
-    const { user, purchasedCourseIds } = useAuth();
+    const { user, purchasedCourseIds, getAccessStatus } = useAuth();
     const { settings, loading: settingsLoading } = useSettings() as any;
-    // const { subjects, loading: subjectsLoading } = useSubjects(); // REMOVED
 
     const [metadata, setMetadata] = useState<SubjectMetadata | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const isPurchased = purchasedCourseIds.includes(subjectId);
+    const accessStatus = getAccessStatus(subjectId);
+    const isPurchased = accessStatus === "active";
+    const isExpired = accessStatus === "expired";
 
     const [bundleSubjects, setBundleSubjects] = useState<any[]>([]);
     const [loadingBundle, setLoadingBundle] = useState(true);
 
     const bundleCourseIds = bundleSubjects.map(s => s.id);
-    const unownedBundleSubjects = bundleSubjects.filter(s => !purchasedCourseIds.includes(s.id));
+    const unownedBundleSubjects = bundleSubjects.filter(s => getAccessStatus(s.id) !== "active");
 
     // Bundle Price Calculation
     const bundlePrice = unownedBundleSubjects.reduce((sum, s) => sum + (s.price || 0), 0);
     const bundleOriginalPrice = unownedBundleSubjects.reduce((sum, s) => sum + (s.originalPrice || s.price || 0), 0);
     const unownedBundleCourseIds = unownedBundleSubjects.map(s => s.id);
-    const isBundleFullyOwned = bundleSubjects.length > 0 && bundleSubjects.every(s => purchasedCourseIds.includes(s.id));
+    const isBundleFullyOwned = bundleSubjects.length > 0 && bundleSubjects.every(s => getAccessStatus(s.id) === "active");
 
     useEffect(() => {
         const fetchSubjectData = async () => {
@@ -254,6 +255,7 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
                                 courseIds={bundleCourseIds}
                                 amount={metadata.price || 0}
                                 courseName={metadata.title}
+                                isRenewing={isExpired}
                             />
                         )}
 
@@ -303,6 +305,7 @@ export default function SubjectDetails({ subjectId }: SubjectDetailsProps) {
                                 amount={bundlePrice}
                                 courseName={`${metadata.branch} - ${metadata.semester} Bundle`}
                                 className="w-full py-3"
+                                isRenewing={unownedBundleCourseIds.some(id => getAccessStatus(id) === "expired")}
                             />
                         )}
                     </div>

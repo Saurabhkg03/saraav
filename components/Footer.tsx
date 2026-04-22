@@ -65,6 +65,7 @@ export function Footer() {
                                 <button
                                     onClick={openFeedback}
                                     className="text-zinc-500 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400"
+                                    suppressHydrationWarning
                                 >
                                     Send Feedback
                                 </button>
