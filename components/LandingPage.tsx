@@ -763,7 +763,7 @@ function RotatingText() {
         <span className="relative inline-flex flex-col items-center justify-center align-bottom ml-2 min-w-[140px] h-[1.1em]">
             <span
                 className={cn(
-                    "absolute transition-all duration-700 ease-in-out bg-gradient-to-r from-orange-500 via-pink-500 to-indigo-500 bg-clip-text text-transparent transform",
+                    "absolute transition-all duration-700 ease-in-out bg-gradient-to-r from-orange-500 via-pink-500 to-indigo-500 bg-clip-text text-transparent transform animate-gradient-flow",
                     isFlipping ? "opacity-0 scale-y-0 translate-y-4 rotate-x-90" : "opacity-100 scale-y-100 translate-y-0 rotate-x-0"
                 )}
                 style={{ backfaceVisibility: 'hidden' }}
@@ -772,7 +772,7 @@ function RotatingText() {
             </span>
             {/* Ambient Glow for "Beautiful" effect */}
             <span className={cn(
-                "absolute inset-0 bg-gradient-to-r from-orange-500 via-pink-500 to-indigo-500 blur-2xl opacity-20 transition-all duration-700",
+                "absolute inset-0 bg-gradient-to-r from-orange-500 via-pink-500 to-indigo-500 blur-2xl opacity-20 transition-all duration-700 animate-gradient-flow",
                 isFlipping ? "opacity-0 scale-50" : "opacity-30 scale-110"
             )} />
         </span>
