@@ -12,8 +12,9 @@ export async function POST(req: Request) {
 
         // Verify Token
         let userId: string;
+        let decodedToken: any;
         try {
-            const decodedToken = await adminAuth.verifyIdToken(token);
+            decodedToken = await adminAuth.verifyIdToken(token);
             userId = decodedToken.uid;
         } catch (error) {
             console.error("Token verification failed:", error);
@@ -42,6 +43,21 @@ export async function POST(req: Request) {
              // For DAU: Since counting exactly unique logins without reading is hard via increments alone efficiently, 
              // we will just track login sessions.
             updates.loginSessions = FieldValue.increment(1);
+            
+            // Log Visitor details
+            const visitorRef = dailyRecordRef.collection('visitors').doc(userId);
+            const visitorData = {
+                uid: userId,
+                email: decodedToken.email || null,
+                name: decodedToken.name || null,
+                picture: decodedToken.picture || null,
+                lastVisitTime: FieldValue.serverTimestamp()
+            };
+            
+            await visitorRef.set({
+                ...visitorData,
+                visitCount: FieldValue.increment(1)
+            }, { merge: true });
         }
 
         // Use merge to create if not exists
