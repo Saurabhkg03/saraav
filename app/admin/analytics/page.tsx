@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Users, BookOpen, Flag, LayoutGrid, RefreshCw, AlertTriangle, ChevronRight, TrendingUp, Package, Activity, CheckCircle2 } from 'lucide-react';
+import { Users, BookOpen, Flag, LayoutGrid, RefreshCw, AlertTriangle, ChevronRight, TrendingUp, Package, Activity, CheckCircle2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -37,6 +37,30 @@ interface AnalyticsData {
     dailyMetrics: DailyMetric[];
 }
 
+interface Visitor {
+    uid: string;
+    email: string | null;
+    name: string | null;
+    picture: string | null;
+    lastVisitTime: any;
+    visitCount: number;
+}
+
+interface UserDetails {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    photoURL: string | null;
+    purchasedCourseIds?: string[];
+    purchases?: Record<string, any>;
+    progressSummary: Record<string, {
+        lastAccessed?: number;
+        attempted: number;
+        done: number;
+        totalQuestionsInteracted: number;
+    }>;
+}
+
 export default function AnalyticsPage() {
     const { isAdmin, loading: authLoading, user } = useAuth();
     const router = useRouter();
@@ -44,7 +68,15 @@ export default function AnalyticsPage() {
     const [data, setData] = useState<AnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'subjects' | 'bundles'>('subjects');
+    const [activeTab, setActiveTab] = useState<'subjects' | 'bundles' | 'visitors'>('subjects');
+
+    // Visitors State
+    const [visitors, setVisitors] = useState<Visitor[]>([]);
+    const [visitorsLoading, setVisitorsLoading] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedUser, setSelectedUser] = useState<UserDetails | null>(null);
+    const [userLoading, setUserLoading] = useState(false);
+    const [expandedVisitorId, setExpandedVisitorId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!authLoading && !isAdmin) {
@@ -73,11 +105,69 @@ export default function AnalyticsPage() {
         }
     };
 
+    const fetchVisitors = async (date: string) => {
+        if (!user) return;
+        setVisitorsLoading(true);
+        try {
+            const token = await user.getIdToken();
+            const res = await fetch(`/api/admin/visitors?date=${date}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await res.json();
+            if (result.success) {
+                setVisitors(result.data);
+            } else {
+                toast.error(result.error || 'Failed to fetch visitors');
+            }
+        } catch (error) {
+            toast.error('Error loading visitors');
+        } finally {
+            setVisitorsLoading(false);
+        }
+    };
+
+    const fetchUserDetails = async (uid: string) => {
+        if (!user) return;
+        setUserLoading(true);
+        try {
+            const token = await user.getIdToken();
+            const res = await fetch(`/api/admin/users/${uid}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await res.json();
+            if (result.success) {
+                setSelectedUser(result.data);
+            } else {
+                toast.error(result.error || 'Failed to fetch user details');
+            }
+        } catch (error) {
+            toast.error('Error loading user details');
+        } finally {
+            setUserLoading(false);
+        }
+    };
+
+    const handleExpandVisitor = (uid: string) => {
+        if (expandedVisitorId === uid) {
+            setExpandedVisitorId(null);
+            setSelectedUser(null);
+        } else {
+            setExpandedVisitorId(uid);
+            fetchUserDetails(uid);
+        }
+    };
+
     useEffect(() => {
         if (isAdmin) {
             fetchAnalytics();
         }
     }, [isAdmin, user]);
+
+    useEffect(() => {
+        if (isAdmin && activeTab === 'visitors') {
+            fetchVisitors(selectedDate);
+        }
+    }, [isAdmin, user, activeTab, selectedDate]);
 
     const handleSync = async () => {
         if (!user) return;
@@ -326,10 +416,10 @@ export default function AnalyticsPage() {
 
             {/* Top Subjects / Bundles Tabs */}
             <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 flex">
+                <div className="border-b border-zinc-200 dark:border-zinc-800 flex overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('subjects')}
-                        className={`px-6 py-4 text-sm font-semibold transition-colors ${activeTab === 'subjects'
+                        className={`px-6 py-4 text-sm font-semibold whitespace-nowrap transition-colors ${activeTab === 'subjects'
                             ? 'text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
                             : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
                     >
@@ -337,11 +427,19 @@ export default function AnalyticsPage() {
                     </button>
                     <button
                         onClick={() => setActiveTab('bundles')}
-                        className={`px-6 py-4 text-sm font-semibold transition-colors ${activeTab === 'bundles'
+                        className={`px-6 py-4 text-sm font-semibold whitespace-nowrap transition-colors ${activeTab === 'bundles'
                             ? 'text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
                             : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
                     >
                         Top 5 Bundles
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('visitors')}
+                        className={`px-6 py-4 text-sm font-semibold whitespace-nowrap transition-colors ${activeTab === 'visitors'
+                            ? 'text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
+                    >
+                        Visitors List
                     </button>
                 </div>
 
@@ -411,6 +509,102 @@ export default function AnalyticsPage() {
                             <p className="text-sm mt-1">Bundle tracking starts from the next purchase.</p>
                         </div>
                     )
+                )}
+
+                {activeTab === 'visitors' && (
+                    <div className="p-6">
+                        <div className="flex items-center gap-4 mb-6">
+                            <Calendar className="h-5 w-5 text-zinc-400" />
+                            <input 
+                                type="date" 
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
+
+                        {visitorsLoading ? (
+                            <div className="flex justify-center p-12">
+                                <RefreshCw className="h-6 w-6 animate-spin text-zinc-400" />
+                            </div>
+                        ) : visitors.length > 0 ? (
+                            <div className="divide-y divide-zinc-200 dark:divide-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+                                {visitors.map((v) => (
+                                    <div key={v.uid} className="flex flex-col border-b border-zinc-200 dark:border-zinc-800 last:border-b-0">
+                                        <div 
+                                            className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors"
+                                            onClick={() => handleExpandVisitor(v.uid)}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                {v.picture ? (
+                                                    <img src={v.picture} alt="" className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                                                        {v.name ? v.name.charAt(0).toUpperCase() : '?'}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <h3 className="font-medium text-zinc-900 dark:text-zinc-100">{v.name || 'Anonymous User'}</h3>
+                                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{v.email || v.uid}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right flex items-center gap-4">
+                                                <div className="hidden sm:block">
+                                                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{v.visitCount} visits</p>
+                                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                        Last: {v.lastVisitTime?._seconds ? new Date(v.lastVisitTime._seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'}
+                                                    </p>
+                                                </div>
+                                                <ChevronRight className={`h-5 w-5 text-zinc-400 transition-transform ${expandedVisitorId === v.uid ? 'rotate-90' : ''}`} />
+                                            </div>
+                                        </div>
+
+                                        {expandedVisitorId === v.uid && (
+                                            <div className="p-4 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-200 dark:border-zinc-800">
+                                                {userLoading ? (
+                                                    <div className="flex justify-center p-4">
+                                                        <RefreshCw className="h-5 w-5 animate-spin text-zinc-400" />
+                                                    </div>
+                                                ) : selectedUser && selectedUser.uid === v.uid ? (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-2">User Details</h4>
+                                                            <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                                                <p><span className="font-medium">Total Courses Purchased:</span> {selectedUser.purchasedCourseIds?.length || 0}</p>
+                                                                <p><span className="font-medium">UID:</span> {selectedUser.uid}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Subject Progress</h4>
+                                                            {Object.keys(selectedUser.progressSummary || {}).length > 0 ? (
+                                                                <div className="space-y-3">
+                                                                    {Object.entries(selectedUser.progressSummary).map(([subjId, prog]) => (
+                                                                        <div key={subjId} className="flex justify-between text-sm bg-white dark:bg-zinc-900 p-2 rounded border border-zinc-200 dark:border-zinc-700">
+                                                                            <span className="font-medium truncate max-w-[150px]" title={subjId}>{subjId}</span>
+                                                                            <span className="text-zinc-500">{prog.attempted} attempted, {prog.done} done</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-sm text-zinc-500">No progress recorded yet.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-zinc-500 p-4">Could not load details.</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center p-12 text-center text-zinc-500 dark:text-zinc-400 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
+                                <Users className="h-8 w-8 mb-3 opacity-20" />
+                                <p>No visitors recorded for this date.</p>
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
