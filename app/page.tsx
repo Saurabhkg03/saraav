@@ -315,7 +315,7 @@ export default function Dashboard() {
       <section className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-            Welcome back, <span className="block md:inline text-indigo-600 dark:text-indigo-400">{user.displayName || 'Student'}</span>
+            Welcome back, <span className="block md:inline bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-indigo-600 bg-clip-text text-transparent animate-gradient-flow dark:from-indigo-400 dark:via-fuchsia-400 dark:to-indigo-400 font-extrabold">{user.displayName || 'Student'}</span>
           </h1>
           <p className="mt-2 text-zinc-500 dark:text-zinc-400">
             Continue your learning journey or explore new courses.
