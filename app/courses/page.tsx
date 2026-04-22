@@ -15,7 +15,7 @@ function MyCoursesContent() {
     // const { subjects, loading } = useSubjects(); // REMOVED: Fetching all subjects is inefficient
     const [subjects, setSubjects] = useState<SubjectMetadata[]>([]);
     const [loading, setLoading] = useState(true);
-    const { purchasedCourseIds, user, loading: authLoading, progress, purchases } = useAuth();
+    const { purchasedCourseIds, user, loading: authLoading, progress, purchases, getAccessStatus } = useAuth();
 
     // Track interactions
     const [viewingSemester, setViewingSemester] = useState<string | null>(null);
@@ -176,6 +176,15 @@ function MyCoursesContent() {
         });
     }, [myCourses, purchases]);
 
+    // Split bundles into active (at least one non-expired) and fully-expired
+    const activeBundles = useMemo(() =>
+        sortedBundles.filter(([, b]) => b.subjects.some(s => getAccessStatus(s.id) !== "expired"))
+    , [sortedBundles, getAccessStatus]);
+
+    const expiredBundles = useMemo(() =>
+        sortedBundles.filter(([, b]) => b.subjects.every(s => getAccessStatus(s.id) === "expired"))
+    , [sortedBundles, getAccessStatus]);
+
     // Derived State: Search Results
     const searchResults = useMemo(() => {
         if (!searchQuery) return [];
@@ -235,10 +244,8 @@ function MyCoursesContent() {
         const totalQuestions = subject.questionCount || 1;
         const progressPercentage = Math.round((solvedCount / totalQuestions) * 100);
 
-        const purchaseData = purchases?.[subject.id];
-        const expiryDate = purchaseData?.expiryDate;
-        const isExpired = expiryDate ? Date.now() > expiryDate : false;
-        const targetLink = isExpired ? `/marketplace/${subject.id}` : `/study/${subject.id}`;
+        const isExpired = getAccessStatus(subject.id) === "expired";
+        const targetLink = `/study/${subject.id}`;
 
         return (
             <Link
@@ -388,53 +395,121 @@ function MyCoursesContent() {
                     )}
                 </div>
             ) : !viewingSemester ? (
-                // VIEW 1: All Bundles (Branches) - Sorted by Latest Purchase
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {sortedBundles.map(([bundleId, bundleData]) => {
-                        const { branch, semester, subjects } = bundleData;
-                        const subjectCount = subjects.length;
+                // VIEW 1: All Bundles (Branches) — split into Active + Expired sections
+                <div className="space-y-12">
+                    {/* Active Bundles */}
+                    {activeBundles.length > 0 && (
+                        <div className="space-y-4">
+                            {expiredBundles.length > 0 && (
+                                <h2 className="text-lg font-semibold text-zinc-700 dark:text-zinc-300">Active</h2>
+                            )}
+                            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {activeBundles.map(([bundleId, bundleData]) => {
+                                    const { branch, semester, subjects } = bundleData;
+                                    const subjectCount = subjects.length;
+                                    const expiredSubjectCount = subjects.filter(s => getAccessStatus(s.id) === "expired").length;
+                                    const isSomeExpired = expiredSubjectCount > 0;
 
-                        return (
-                            <div
-                                key={bundleId}
-                                onClick={() => setViewingSemester(bundleId)} // Using bundleId as key now
-                                className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-zinc-300 bg-white transition-all hover:shadow-lg dark:border dark:border-zinc-800 dark:bg-zinc-900"
-                            >
-                                <div className={cn(
-                                    "flex min-h-[9rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center",
-                                    getColorClass(branch)
-                                )}>
-                                    <p className="mb-1 text-sm font-medium text-white opacity-90">
-                                        {semester}
-                                    </p>
-                                    <h3 className="text-xl font-bold text-white line-clamp-3">
-                                        {branch}
-                                    </h3>
-                                </div>
-                                <div className="flex flex-1 flex-col p-6">
-                                    <div className="mb-4">
-                                        <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                                            {semester} Bundle
-                                        </p>
-                                        <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">
-                                            {branch}
-                                        </h4>
-                                    </div>
-                                    <div className="mt-auto flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
-                                        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                                            <BookOpen className="h-4 w-4" />
-                                            <span>{subjectCount} Subjects</span>
+                                    return (
+                                        <div
+                                            key={bundleId}
+                                            onClick={() => setViewingSemester(bundleId)}
+                                            className={cn(
+                                                "group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border-2 bg-white transition-all hover:shadow-lg dark:bg-zinc-900",
+                                                isSomeExpired
+                                                    ? "border-yellow-300 dark:border-yellow-900"
+                                                    : "border-zinc-300 dark:border-zinc-800"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "flex min-h-[9rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center",
+                                                getColorClass(branch)
+                                            )}>
+                                                <p className="mb-1 text-sm font-medium text-white opacity-90">{semester}</p>
+                                                <h3 className="text-xl font-bold text-white line-clamp-3">{branch}</h3>
+                                            </div>
+                                            <div className="flex flex-1 flex-col p-6">
+                                                <div className="mb-4">
+                                                    <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">{semester} Bundle</p>
+                                                    <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">{branch}</h4>
+                                                </div>
+                                                <div className="mt-auto flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                                                    <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                                                        <BookOpen className="h-4 w-4" />
+                                                        <span>{subjectCount} Subjects</span>
+                                                    </div>
+                                                    {isSomeExpired ? (
+                                                        <span className="text-xs font-medium text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full dark:bg-yellow-900/20 dark:text-yellow-400">
+                                                            {expiredSubjectCount} Expired
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full dark:bg-green-900/20 dark:text-green-400">
+                                                            Owned
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full dark:bg-green-900/20 dark:text-green-400">
-                                                Owned
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+                                    );
+                                })}
                             </div>
-                        );
-                    })}
+                        </div>
+                    )}
+
+                    {/* Expired Bundles */}
+                    {expiredBundles.length > 0 && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-lg font-semibold text-zinc-500 dark:text-zinc-400">Expired Courses</h2>
+                                <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full dark:bg-red-900/20 dark:text-red-400">
+                                    {expiredBundles.length} bundle{expiredBundles.length > 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {expiredBundles.map(([bundleId, bundleData]) => {
+                                    const { branch, semester, subjects } = bundleData;
+                                    const subjectCount = subjects.length;
+
+                                    return (
+                                        <div
+                                            key={bundleId}
+                                            onClick={() => setViewingSemester(bundleId)}
+                                            className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-red-200 bg-white opacity-80 transition-all hover:shadow-lg hover:opacity-100 dark:border-red-900/60 dark:bg-zinc-900"
+                                        >
+                                            <div className={cn(
+                                                "flex min-h-[9rem] flex-col items-center justify-center bg-gradient-to-br p-4 text-center relative grayscale",
+                                                getColorClass(branch)
+                                            )}>
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
+                                                    <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-700 border border-red-200">
+                                                        Expired
+                                                    </span>
+                                                </div>
+                                                <p className="mb-1 text-sm font-medium text-white opacity-90">{semester}</p>
+                                                <h3 className="text-xl font-bold text-white line-clamp-3">{branch}</h3>
+                                            </div>
+                                            <div className="flex flex-1 flex-col p-6">
+                                                <div className="mb-4">
+                                                    <p className="text-sm font-medium text-zinc-400 dark:text-zinc-500">{semester} Bundle</p>
+                                                    <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">{branch}</h4>
+                                                </div>
+                                                <div className="mt-auto flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                                                    <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                                                        <BookOpen className="h-4 w-4" />
+                                                        <span>{subjectCount} Subjects</span>
+                                                    </div>
+                                                    <span className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full dark:bg-red-900/20 dark:text-red-400">
+                                                        <AlertCircle className="h-3 w-3" />
+                                                        Renew
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             ) : (
                 // VIEW 2: Specific Bundle (Core + Elective Folders + PCC Folders)

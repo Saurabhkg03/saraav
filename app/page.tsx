@@ -12,7 +12,7 @@ import { useEffect, useState, useMemo } from 'react';
 
 export default function Dashboard() {
   const { myCourses, branchSubjects, loading: subjectsLoading } = useDashboardData();
-  const { user, loading: authLoading, branch: userBranch, year: userYear, progress, purchases, purchasedCourseIds } = useAuth();
+  const { user, loading: authLoading, branch: userBranch, year: userYear, progress, purchases, purchasedCourseIds, getAccessStatus, checkAccess } = useAuth();
   const [skeletonType, setSkeletonType] = useState<'dashboard' | 'landing' | null>(null);
 
   // 1. Group BRANCH-SPECIFIC subjects into bundles
@@ -297,6 +297,17 @@ export default function Dashboard() {
     );
   }
 
+  const continueLearningSubjects = Array.from(
+    new Map(
+      [...myCourses, ...branchSubjects.filter(s => progress?.[s.id]?.lastAccessed)].map(s => [s.id, s])
+    ).values()
+  ).filter(s => getAccessStatus(s.id) === "active") // Only show active (non-expired) courses here
+  .sort((a, b) => {
+    const lastA = progress?.[a.id]?.lastAccessed || 0;
+    const lastB = progress?.[b.id]?.lastAccessed || 0;
+    return lastB - lastA;
+  }).slice(0, 3);
+
   return (
     <div className="mx-auto max-w-7xl px-4 pb-8 pt-12 space-y-16 sm:px-6 lg:px-8">
       {/* Hero Section */}
@@ -329,7 +340,7 @@ export default function Dashboard() {
       </section>
 
       {/* My Learning Section (if logged in and has courses) */}
-      {user && myCourses.length > 0 && (
+      {user && continueLearningSubjects.length > 0 && (
         <section>
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Continue Learning</h2>
@@ -338,9 +349,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {myCourses.slice(0, 3).map((subject) => {
-              const purchase = purchases?.[subject.id];
-              const daysRemaining = purchase ? Math.ceil((purchase.expiryDate - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+          {continueLearningSubjects.map((subject) => {
 
               return (
                 <Link
@@ -353,27 +362,13 @@ export default function Dashboard() {
                     getColorClass(subject.title)
                   )}>
                     {getInitials(subject.title)}
-                    {daysRemaining !== null && daysRemaining <= 30 && (
-                      <div className="absolute top-3 right-3 rounded-full bg-red-500/90 px-2 py-0.5 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
-                        Expiring in {daysRemaining} days
-                      </div>
-                    )}
                   </div>
                   <div className="flex flex-1 flex-col p-6">
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                       {subject.title}
                     </h3>
-                    <div className="mt-4 flex items-center justify-between mb-4">
-                      <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                        {daysRemaining !== null ? (
-                          daysRemaining > 30 ? (
-                            <span className="text-green-600 dark:text-green-400 font-medium">Active</span>
-                          ) : (
-                            <span className="text-amber-600 dark:text-amber-400 font-medium">Expiring Soon</span>
-                          )
-                        ) : null}
-                      </span>
-                      <span className="flex items-center gap-1.5 rounded-full bg-transparent p-0 text-sm font-medium text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
+                    <div className="mt-4 flex items-center justify-end mb-4">
+                      <span className="flex items-center gap-1.5 rounded-full bg-transparent p-0 text-sm font-medium text-indigo-600 dark:text-indigo-400 transition-transform group-hover:translate-x-1">
                         <PlayCircle className="h-4 w-4" />
                         Continue
                       </span>
@@ -468,9 +463,13 @@ export default function Dashboard() {
                       <span>{bundle.subjectCount} Subjects</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {bundle.subjects.every((s: any) => purchasedCourseIds?.includes(s.id)) ? (
+                      {bundle.subjects.every((s: any) => getAccessStatus(s.id) === "active") ? (
                         <div className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
                           Owned
+                        </div>
+                      ) : bundle.subjects.every((s: any) => getAccessStatus(s.id) !== "not_purchased") && bundle.subjects.some((s: any) => getAccessStatus(s.id) === "expired") ? (
+                        <div className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-bold text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                          Expired
                         </div>
                       ) : (
                         <>
@@ -537,9 +536,13 @@ export default function Dashboard() {
                     <span>{bundle.subjectCount} Subjects</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {bundle.subjects.every((s: any) => purchasedCourseIds?.includes(s.id)) ? (
+                    {bundle.subjects.every((s: any) => getAccessStatus(s.id) === "active") ? (
                       <div className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
                         Owned
+                      </div>
+                    ) : bundle.subjects.every((s: any) => getAccessStatus(s.id) !== "not_purchased") && bundle.subjects.some((s: any) => getAccessStatus(s.id) === "expired") ? (
+                      <div className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-bold text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                        Expired
                       </div>
                     ) : (
                       <>
