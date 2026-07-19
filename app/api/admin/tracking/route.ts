@@ -27,6 +27,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
         }
 
+        // Prevent someone from spoofing massive numbers
+        const safeCount = Math.min(Math.max(1, Number(count)), 10);
+
         // Get today's date in YYYY-MM-DD format
         const today = new Date().toISOString().split('T')[0];
         const dailyRecordRef = adminDb.collection('admin_data').doc('analytics_daily').collection('days').doc(today);
@@ -36,9 +39,9 @@ export async function POST(req: Request) {
         };
 
         if (event === 'questionAttempted') {
-            updates.questionsAttempted = FieldValue.increment(count);
+            updates.questionsAttempted = FieldValue.increment(safeCount);
         } else if (event === 'questionDone') {
-            updates.questionsDone = FieldValue.increment(count);
+            updates.questionsDone = FieldValue.increment(safeCount);
         } else if (event === 'login') {
              // For DAU: Since counting exactly unique logins without reading is hard via increments alone efficiently, 
              // we will just track login sessions.

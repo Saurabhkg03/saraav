@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { razorpay } from '@/lib/razorpay';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminAuth } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
     try {
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader?.startsWith('Bearer ')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        const token = authHeader.split('Bearer ')[1];
+        await adminAuth.verifyIdToken(token);
+
         const { courseId, courseIds } = await req.json();
 
         if (!courseId && (!courseIds || courseIds.length === 0)) {
