@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader?.startsWith('Bearer ')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        await adminAuth.verifyIdToken(authHeader.split('Bearer ')[1]);
+
         const doc = await adminDb.collection('settings').doc('global').get();
         if (!doc.exists) {
             // Default settings

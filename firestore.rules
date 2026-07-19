@@ -32,13 +32,16 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       
-      // Allow create/delete if owner or admin (Basic access)
-      allow create, delete: if isOwner(userId) || isAdmin();
+      // Allow create only if they don't try to sneak in admin privileges or purchases
+      allow create: if isOwner(userId) && 
+        !request.resource.data.keys().hasAny(['purchasedCourseIds', 'role', 'purchases']);
+        
+      allow delete: if isOwner(userId) || isAdmin();
 
       // Allow update ONLY if sensitive fields are not touched (unless Admin)
       allow update: if isAdmin() || (
         isOwner(userId) && 
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['purchasedCourseIds', 'role', 'purchases'])
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['purchasedCourseIds', 'role', 'purchases', 'branch'])
       );
       
       match /{document=**} {
@@ -48,18 +51,18 @@ service cloud.firestore {
 
     // 2. SUBJECTS & CONTENT
     match /subjects/{subjectId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
 
       match /{document=**} {
-        allow read: if true; 
+        allow read: if isSignedIn(); 
         allow write: if isAdmin();
       }
     }
 
     // 2a. SUBJECTS METADATA (Lightweight)
     match /subjects_metadata/{subjectId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
@@ -90,7 +93,7 @@ service cloud.firestore {
     // 4. SETTINGS
     // 4. SETTINGS
     match /settings/global {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
